@@ -5,6 +5,7 @@ Classes for various flow map objects, including:
 
 import numpy as np
 from math import *
+import utils
 class DoubleGyre:
 
     def __init__(self, a, epsilon, T_0, n):
@@ -49,8 +50,11 @@ class DoubleGyre:
 
         self.velocity_fields = vfield_dict
 
-    def vfield_elements_at_t(self, t):
-        vfield = self.velocity_fields[t]
-
+    def compute_flow_map(self, step_size):
+        """
+        Uses Runge Kutta 4 method to find flow map from velocity field
+        :param step_size:
+        :return:
+        """
 
 

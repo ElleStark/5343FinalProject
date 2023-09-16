@@ -14,15 +14,20 @@ import flowfield
 a = 0.1  # velocity magnitude A aka U in Pratt et al., 2015
 eps = 0.25
 T_0 = 10
-t = np.linspace(0, 3.5*T_0, 36, endpoint=True)  # use 3.5T_0 as max t to match Pratt et al., 2015
+t = np.linspace(0, 3.5*T_0, 71, endpoint=True)  # use 3.5T_0 as max t to match Pratt et al., 2015
 
 # Create double gyre object and calculate velocity fields
 n = 50  # number of grid steps in the x direction, fewer when showing velocity arrows
 DoubleGyre = flowfield.DoubleGyre(a, eps, T_0, n)
 DoubleGyre.compute_vfields(t)
 # TEST: Plot velocity field at a few times
-plt.quiver(*DoubleGyre.velocity_fields[0*T_0])
+plt.quiver(*DoubleGyre.velocity_fields[0.75*T_0])
 plt.show()
+
+# Find flow map using Runge-Kutta 4th order method
+
+
+
 
 # import numpy as np
 # import matplotlib.pyplot as plt
