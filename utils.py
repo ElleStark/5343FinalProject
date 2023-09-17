@@ -1,22 +1,20 @@
 
-# Below code for Runge Kutta calculations from:
-# https://www.geeksforgeeks.org/runge-kutta-4th-order-method-solve-differential-equation/
-def rungeKutta(x0, y0, x, h):
-    # Count number of iterations using step size or
-    # step height h
-    n = (int)((x - x0) / h)
-    # Iterate for number of iterations
-    y = y0
-    for i in range(1, n + 1):
-        "Apply Runge Kutta Formulas to find next value of y"
-        k1 = h * dydx(x0, y)
-        k2 = h * dydx(x0 + 0.5 * h, y + 0.5 * k1)
-        k3 = h * dydx(x0 + 0.5 * h, y + 0.5 * k2)
-        k4 = h * dydx(x0 + h, y + k3)
+# Below code for Runge Kutta calculations from Dr.Steve Brunton:
+# https://www.youtube.com/watch?v=LRF4dGP4xeo
 
-        # Update next value of y
-        y = y + (1.0 / 6.0) * (k1 + 2 * k2 + 2 * k3 + k4)
-
-        # Update next value of x
-        x0 = x0 + h
-    return y
+def rk4singlestep(fun, dt, t0, y0):
+    """
+    Single step of 4th-order Runge-Kutta integration. Use instead of scipy.integrate.solve_ivp to allow for
+    vectorized computation of bundle of initial conditions.
+    :param fun:
+    :param dt:
+    :param t0:
+    :param y0:
+    :return:
+    """
+    f1 = fun(t0, y0)
+    f2 = fun(t0 + dt / 2, y0 + (dt / 2) * f1)
+    f3 = fun(t0 + dt / 2, y0 + (dt / 2) * f2)
+    f4 = fun(t0 + dt, y0 + dt * f3)
+    yout = y0 + (dt / 6) * (f1 + 2 * f2 + 2 * f3 + f4)
+    return yout

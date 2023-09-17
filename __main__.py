@@ -21,24 +21,17 @@ n = 50  # number of grid steps in the x direction, fewer when showing velocity a
 DoubleGyre = flowfield.DoubleGyre(a, eps, T_0, n)
 DoubleGyre.compute_vfields(t)
 # TEST: Plot velocity field at a few times
-plt.quiver(*DoubleGyre.velocity_fields[0.75*T_0])
+plt.quiver(*DoubleGyre.velocity_fields[0*T_0])
 plt.show()
 
-# Find flow map using Runge-Kutta 4th order method
+# Find flow map using Runge-Kutta 4th order method to integrate backwards from t = t0
+# Pratt et al. used integration time of 2-2.5 turnover times
+T = -2*T_0  # integration time
+tau = [0, 2.5*T_0, 3*T_0, 3.5*T_0]  # evolution time 0 to 3.5 T_0
+DoubleGyre.compute_flow_map(T, tau)
 
 
 
-
-# import numpy as np
-# import matplotlib.pyplot as plt
-#
-# x,y = np.meshgrid(np.linspace(-5,5,10),np.linspace(-5,5,10))
-#
-# u = -y/np.sqrt(x**2 + y**2)
-# v = x/np.sqrt(x**2 + y**2)
-#
-# plt.quiver(x,y,u,v)
-# plt.show()
 
 # test Yi Liu's plotting script:
 # import numpy as np
