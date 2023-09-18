@@ -116,8 +116,8 @@ class DoubleGyre():
         Uses Runge Kutta 4th order method to find flow map from velocity field
         :return:
         """
-        dt = T/1000  # for T=10, dt = 0.01
-        L = int(T / dt) # need to calculate if dt definition is not based on T
+        dt = T/1000
+        L = abs(int(T / dt))  # need to calculate if dt definition is not based on T
         nx = len(self.xvals)
         ny = len(self.yvals)
 
@@ -126,7 +126,7 @@ class DoubleGyre():
         y0 = self.y
         yIC = np.zeros((2, nx * ny))
         yIC[0, :] = x0.reshape(nx * ny)
-        yIC[0, :] = y0.reshape(nx * ny)
+        yIC[1, :] = y0.reshape(nx * ny)
 
         # Compute Trajectories
         # ADD TAU LOOP ONCE CODE IS WORKING!
@@ -139,11 +139,12 @@ class DoubleGyre():
             yin = yout
             y_single_steps[:, step, :] = yout
 
+        # Trajectories for all time steps
         self.trajectories = y_single_steps
 
+        # Final position used for creating flow map
         fmap = y_single_steps[:, -1, :]
-        #fmap = fmap.reshape
-
+        fmap = np.squeeze(fmap)
         self.flow_map = fmap
 
 

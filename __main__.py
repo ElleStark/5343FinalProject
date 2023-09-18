@@ -7,6 +7,7 @@ Code inspired by Python FTLE calculations used by: 1) Liu et al., 2018 (https://
 https://github.com/stevenliuyi/ocean-ftle and 2) https://github.com/jollybao/LCS
 """
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 import numpy as np
 import flowfield
 
@@ -17,18 +18,42 @@ T_0 = 10
 t = np.linspace(0, 3.5*T_0, 71, endpoint=True)  # use 3.5T_0 as max t to match Pratt et al., 2015
 
 # Create double gyre object and calculate velocity fields
-n = 50  # number of grid steps in the x direction, fewer when showing velocity arrows
+n = 400  # number of grid steps in the x direction, fewer when showing velocity arrows
 DoubleGyre = flowfield.DoubleGyre(a, eps, T_0, n)
 DoubleGyre.compute_vfields(t)
-# TEST: Plot velocity field at a few times
-plt.quiver(*DoubleGyre.velocity_fields[0*T_0])
-plt.show()
+# Check: Plot velocity field at a few times
+# plot_times = [0, 0.25, 0.75]
+# for time in plot_times:
+#     plt.quiver(*DoubleGyre.velocity_fields[time*T_0])
+#     plt.show()
 
 # Find flow map using Runge-Kutta 4th order method to integrate backwards from t = t0
 # Pratt et al. used integration time of 2-2.5 turnover times
 T = -2*T_0  # integration time
 tau = [0, 2.5*T_0, 3*T_0, 3.5*T_0]  # evolution time 0 to 3.5 T_0
 DoubleGyre.compute_flow_map(T, tau)
+
+### Check: plot trajectories
+x_trajs = DoubleGyre.trajectories[0]
+y_trajs = DoubleGyre.trajectories[1]
+# set up figure
+fig, ax = plt.subplots()
+# First snapshot
+positions = ax.scatter(x_trajs[0], y_trajs[0], s=0.1, c='black')
+# Plotting configuration
+ax.set(xlim=[0, 2], ylim=[0, 1], xlabel='x', ylabel='y')
+
+
+def update(frame):
+    positions.set_offsets(x_trajs[frame], y_trajs[frame])
+    return positions
+
+
+traj_movie = animation.FuncAnimation(fig=fig, func=update, frames=len(DoubleGyre.trajectories[1]), interval=200, blit=True)
+plt.show()
+
+
+
 
 
 
