@@ -18,14 +18,14 @@ T_0 = 10
 t = np.linspace(0, 3.5*T_0, 71, endpoint=True)  # use 3.5T_0 as max t to match Pratt et al., 2015
 
 # Create double gyre object and calculate velocity fields
-n = 400  # number of grid steps in the x direction, fewer when showing velocity arrows
+n = 200  # number of grid steps in the x direction, fewer when showing velocity arrows
 DoubleGyre = flowfield.DoubleGyre(a, eps, T_0, n)
 DoubleGyre.compute_vfields(t)
 # Check: Plot velocity field at a few times
-# plot_times = [0, 0.25, 0.75]
-# for time in plot_times:
-#     plt.quiver(*DoubleGyre.velocity_fields[time*T_0])
-#     plt.show()
+plot_times = [0, 0.25, 0.75]
+for time in plot_times:
+    plt.quiver(*DoubleGyre.velocity_fields[time*T_0])
+    plt.show()
 
 # Find flow map using Runge-Kutta 4th order method to integrate backwards from t = t0
 # Pratt et al. used integration time of 2-2.5 turnover times
@@ -39,18 +39,27 @@ y_trajs = DoubleGyre.trajectories[1]
 # set up figure
 fig, ax = plt.subplots()
 # First snapshot
-positions = ax.scatter(x_trajs[0], y_trajs[0], s=0.1, c='black')
+positions = ax.scatter(x_trajs, y_trajs, s=0.1, c='black')
 # Plotting configuration
 ax.set(xlim=[0, 2], ylim=[0, 1], xlabel='x', ylabel='y')
 
+def init_scatter():
+    positions.set_offsets([])
+    return(positions,)
 
 def update(frame):
-    positions.set_offsets(x_trajs[frame], y_trajs[frame])
-    return positions
+    data = np.column_stack((x_trajs[frame], y_trajs[frame]))
+    positions.set_offsets(data)
+    return (positions, )
 
-
-traj_movie = animation.FuncAnimation(fig=fig, func=update, frames=len(DoubleGyre.trajectories[1]), interval=200, blit=True)
+# len(DoubleGyre.trajectories[1]) for num frames?
+traj_movie = animation.FuncAnimation(fig=fig, func=update, frames=1000, interval=200, blit=True)
 plt.show()
+
+# save and show video
+f = r"plots/trajectories_200.mp4"
+writervideo = animation.FFMpegWriter(fps=60)
+traj_movie.save(f, writer=writervideo)
 
 
 
