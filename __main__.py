@@ -18,7 +18,7 @@ T_0 = 10
 t = np.linspace(0, 3.5*T_0, 71, endpoint=True)  # use 3.5T_0 as max t to match Pratt et al., 2015
 
 # Create double gyre object and calculate velocity fields
-n = 200  # number of grid steps in the x direction, fewer when showing velocity arrows
+n = 25  # number of grid steps in the x direction, fewer when showing velocity arrows
 DoubleGyre = flowfield.DoubleGyre(a, eps, T_0, n)
 DoubleGyre.compute_vfields(t)
 # Check: Plot velocity field at a few times
@@ -32,34 +32,34 @@ for time in plot_times:
 T = -2*T_0  # integration time
 tau = [0, 2.5*T_0, 3*T_0, 3.5*T_0]  # evolution time 0 to 3.5 T_0
 DoubleGyre.compute_flow_map(T, tau)
-
-### Check: plot trajectories
-x_trajs = DoubleGyre.trajectories[0]
-y_trajs = DoubleGyre.trajectories[1]
-# set up figure
-fig, ax = plt.subplots()
-# First snapshot
-positions = ax.scatter(x_trajs, y_trajs, s=0.1, c='black')
-# Plotting configuration
-ax.set(xlim=[0, 2], ylim=[0, 1], xlabel='x', ylabel='y')
-
-def init_scatter():
-    positions.set_offsets([])
-    return(positions,)
-
-def update(frame):
-    data = np.column_stack((x_trajs[frame], y_trajs[frame]))
-    positions.set_offsets(data)
-    return (positions, )
-
-# len(DoubleGyre.trajectories[1]) for num frames?
-traj_movie = animation.FuncAnimation(fig=fig, func=update, frames=1000, interval=200, blit=True)
-plt.show()
-
-# save and show video
-f = r"plots/trajectories_200.mp4"
-writervideo = animation.FFMpegWriter(fps=60)
-traj_movie.save(f, writer=writervideo)
+#
+# ### Check: plot trajectories
+# x_trajs = DoubleGyre.trajectories[0]
+# y_trajs = DoubleGyre.trajectories[1]
+# # set up figure
+# fig, ax = plt.subplots()
+# # First snapshot
+# positions = ax.scatter(x_trajs, y_trajs, s=0.1, c='black')
+# # Plotting configuration
+# ax.set(xlim=[0, 2], ylim=[0, 1], xlabel='x', ylabel='y')
+#
+# def init_scatter():
+#     positions.set_offsets([])
+#     return(positions,)
+#
+# def update(frame):
+#     data = np.column_stack((x_trajs[frame], y_trajs[frame]))
+#     positions.set_offsets(data)
+#     return (positions, )
+#
+# # len(DoubleGyre.trajectories[1]) for num frames?
+# traj_movie = animation.FuncAnimation(fig=fig, func=update, frames=1000, interval=200, blit=True)
+# plt.show()
+#
+# # save and show video
+# f = r"plots/trajectories_200.mp4"
+# writervideo = animation.FFMpegWriter(fps=60)
+# traj_movie.save(f, writer=writervideo)
 
 
 
