@@ -18,7 +18,7 @@ T_0 = 10
 t = np.linspace(0, 3.5*T_0, 71, endpoint=True)  # use 3.5T_0 as max t to match Pratt et al., 2015
 
 # Create double gyre object and calculate velocity fields
-n = 25  # number of grid steps in the x direction, fewer when showing velocity arrows
+n = 40  # number of grid steps in the x direction, fewer when showing velocity arrows
 DoubleGyre = flowfield.DoubleGyre(a, eps, T_0, n)
 DoubleGyre.compute_vfields(t)
 # Check: Plot velocity field at a few times
