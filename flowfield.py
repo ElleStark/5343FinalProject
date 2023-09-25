@@ -66,7 +66,8 @@ class FlowField:
                 gc_tensor = np.dot(np.transpose(jacobian), jacobian)
                 # its largest eigenvalue
                 lamda = LA.eigvals(gc_tensor)
-                ftle[j][i] = max(lamda)
+                max_eig = max(lamda)
+                ftle[j][i] = 1 / (2 * self.integration_time) * log(max_eig)
 
         self.ftle = ftle
 
@@ -142,6 +143,8 @@ class AnalyticalFlow(FlowField):
         Uses Runge Kutta 4th order method to find flow map from velocity field
         :return:
         """
+        # keep track of integration time for use in FTLE calculations
+        self.integration_time = T
         dt = T / 1000
         L = abs(int(T / dt))  # need to calculate if dt definition is not based on T
         nx = len(self.xvals)

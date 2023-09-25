@@ -21,7 +21,7 @@ T_0 = 10
 t = np.linspace(0, 3.5*T_0, 351, endpoint=True)  # use 3.5T_0 as max t to match Pratt et al., 2015
 
 # Create double gyre object and calculate velocity fields
-n = 1000  # number of grid steps in the x direction, use fewer when plotting velocity arrows
+n = 400  # number of grid steps in the x direction, use fewer when plotting velocity arrows
 DoubleGyre = flowfield.DoubleGyre(a, eps, T_0, n)
 start_time = time.time()
 DoubleGyre.compute_vfields(t)
@@ -50,19 +50,15 @@ start_time = time.time()
 DoubleGyre.compute_ftle()
 print('time to compute FTLE is: ' + str(time.time()-start_time))
 
-np.savetxt('plots/doublegyre_negftle_t0_T2T0_fine.txt', DoubleGyre.ftle)
-ftle = np.genfromtxt('plots/doublegyre_negftle_t0_T2T0_fine.txt')
+# Save FTLE field for future plotting and/or computations
+np.savetxt('data/doublegyre_negftle_t0_T2T0_pratt.txt', DoubleGyre.ftle)
+ftle = DoubleGyre.ftle
+#ftle = np.genfromtxt('data/doublegyre_negftle_t0_T2T0_pratt.txt')
 
-plt.contourf(DoubleGyre.x, DoubleGyre.y, ftle, 100, cmap=plt.cm.Reds)
+fig, ax = plt.subplots()
+
+plt.contourf(DoubleGyre.x, DoubleGyre.y, ftle, 100, cmap=plt.cm.Greys_r)
+ax.set_aspect('equal', adjustable='box')
+plt.savefig('plots/doublegyre_negftle_t0_T2T0_pratt.png')
 plt.show()
 
-# console plotting script:
-# n = 1000
-# x = np.linspace(0, 2, num=n)
-# y = np.linspace(0, 1, num=int(n / 2))
-# x, y = np.meshgrid(x, y, indexing='xy')
-#
-# ftle = np.genfromtxt('plots/doublegyre_negftle_t0_T2T0.txt')
-#
-# plt.contourf(x, y, ftle, 100, cmap=plt.cm.Reds)
-# plt.show()
