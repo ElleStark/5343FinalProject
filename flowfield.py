@@ -6,10 +6,10 @@ Above classes are subclasses of AnalyticalFlow which is subclass of FlowField
 """
 
 import numpy as np
+import numpy.linalg as LA
 from math import *
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-import scipy as sp
 
 
 class FlowField:
@@ -31,36 +31,49 @@ class FlowField:
         yout = y0 + (dt / 6) * (f1 + 2 * f2 + 2 * f3 + f4)
         return yout
 
-    def compute_ftle(self, X, Y):
+    def compute_ftle(self):
         """
         modified from https://github.com/jollybao/LCS/blob/master/src/FTLE.py
-
+        Must run method 'compute_flow_map' before using this method.
         :param Y:
         :return:
         """
+        # Find height and width, and deltas of domain
+        grid_height = len(self.yvals)
+        grid_width = len(self.xvals)
+        delta_x = self.xvals[1] - self.xvals[0]  # Even spacing, so just take difference at any index
+        delta_y = self.yvals[1] - self.yvals[0]
+        # Initialize arrays for jacobian approximation and ftle
         jacobian = np.empty([2, 2], float)
-        ftle = np.empty([H - 2, L - 2], float)
+        ftle = np.zeros([grid_height, grid_width], float)
 
-        delta = self.xvals[1] - self.xvals[0]  # Even spacing, so just take diff at any index
+        # Use flow map to assign x and y final positions
+        x_final = self.flow_map[0]
+        x_final = x_final.reshape(grid_height, grid_width)
+        y_final = self.flow_map[1]
+        y_final = y_final.reshape(grid_height, grid_width)
 
-        for i in range(0, H - 2):
-            for j in range(0, L - 2):
-                jacobian[0][0] = (X[(1 + i) * L + 2 + j] - X[(1 + i) * L + j]) / (2 * delta)
-                jacobian[0][1] = (X[(2 + i) * L + 1 + j] - X[i * L + 1 + j]) / (2 * delta)
-                jacobian[1][0] = (Y[(1 + i) * L + 2 + j] - Y[(1 + i) * L + j]) / (2 * delta)
-                jacobian[1][1] = (Y[(2 + i) * L + 1 + j] - Y[i * L + 1 + j]) / (2 * delta)
+        # Loop through positions and calculate ftle at each point
+        # Leave borders equal to zero (central differencing needs adjacent points for calculation)
+        for i in range(1, grid_width - 1):
+            for j in range(1, grid_height - 1):
+                jacobian[0][0] = (x_final[j, i + 1] - x_final[j, i - 1]) / (2 * delta_x)
+                jacobian[0][1] = (x_final[j + 1, i] - x_final[j - 1, i]) / (2 * delta_y)
+                jacobian[1][0] = (y_final[j, i + 1] - y_final[j, i - 1]) / (2 * delta_x)
+                jacobian[1][1] = (y_final[j + 1, i] - y_final[j - 1, i]) / (2 * delta_y)
 
-                # Green-Cauchy tensor
-                D = num.dot(num.transpose(J), J)
+                # Cauchy-Green tensor
+                gc_tensor = np.dot(np.transpose(jacobian), jacobian)
                 # its largest eigenvalue
-                lamda = LA.eigvals(D)
-                FTLE[i][j] = max(lamda)
-        return FTLE
+                lamda = LA.eigvals(gc_tensor)
+                ftle[j][i] = max(lamda)
+
+        self.ftle = ftle
 
     def plot_trajectories(self, xlim, ylim):
         """
         Creates movie of particle trajectories as assigned in compute_flowmap method
-        Must call compute_flowmap before using this method.
+        Must call compute_flow_map before using this method.
         :param xlim: x-axis limits in form [min, max]
         :param ylim: y-axis limits in form [min, max]
         :return: saves .mp4 animation of particle trajectories in /plots folder
@@ -91,6 +104,7 @@ class FlowField:
         f = r"plots/trajectories.mp4"
         writervideo = animation.FFMpegWriter(fps=60)
         traj_movie.save(f, writer=writervideo)
+
 
 class AnalyticalFlow(FlowField):
 

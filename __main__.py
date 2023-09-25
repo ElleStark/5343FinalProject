@@ -10,20 +10,22 @@ Code inspired by Python FTLE calculations used by: 1) Liu et al., 2018 (https://
 https://github.com/stevenliuyi/ocean-ftle and 2) https://github.com/jollybao/LCS
 """
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
 import numpy as np
 import flowfield
+import time
 
 # Constants for double gyre:
 a = 0.1  # velocity magnitude A aka U in Pratt et al., 2015
 eps = 0.25
 T_0 = 10
-t = np.linspace(0, 3.5*T_0, 71, endpoint=True)  # use 3.5T_0 as max t to match Pratt et al., 2015
+t = np.linspace(0, 3.5*T_0, 351, endpoint=True)  # use 3.5T_0 as max t to match Pratt et al., 2015
 
 # Create double gyre object and calculate velocity fields
 n = 1000  # number of grid steps in the x direction, use fewer when plotting velocity arrows
 DoubleGyre = flowfield.DoubleGyre(a, eps, T_0, n)
+start_time = time.time()
 DoubleGyre.compute_vfields(t)
+print('time to compute velocities is: ' + str(time.time()-start_time))
 
 ### Check: Plot velocity field at a few times
 #plot_times = [0, 0.25, 0.75]
@@ -35,31 +37,32 @@ DoubleGyre.compute_vfields(t)
 # Pratt et al. used integration time of 2-2.5 turnover times
 T = -2*T_0  # integration time
 tau = [0, 2.5*T_0, 3*T_0, 3.5*T_0]  # evolution time 0 to 3.5 T_0 [NOT USED YET]
-DoubleGyre.compute_flow_map(T, tau)
+start_time = time.time()
+DoubleGyre.compute_flow_map(T, tau)  # note that compute_flow_map also returns trajectories (position at every time step)
+print('time to compute trajectories is: ' + str(time.time()-start_time))
 
 ### Check: plot trajectories
 #DoubleGyre.plot_trajectories([0, 2], [0, 1])
 
-# Compute Right Cauchy-Green strain tensor using central differencing
+# Compute FTLE: approximate Right Cauchy-Green strain tensor using central differencing,
+# then find max eigenvalues
+start_time = time.time()
+DoubleGyre.compute_ftle()
+print('time to compute FTLE is: ' + str(time.time()-start_time))
 
+np.savetxt('plots/doublegyre_negftle_t0_T2T0_fine.txt', DoubleGyre.ftle)
+ftle = np.genfromtxt('plots/doublegyre_negftle_t0_T2T0_fine.txt')
 
+plt.contourf(DoubleGyre.x, DoubleGyre.y, ftle, 100, cmap=plt.cm.Reds)
+plt.show()
 
-
-
-
-# test Yi Liu's plotting script:
-# import numpy as np
-# import matplotlib as plt
+# console plotting script:
+# n = 1000
+# x = np.linspace(0, 2, num=n)
+# y = np.linspace(0, 1, num=int(n / 2))
+# x, y = np.meshgrid(x, y, indexing='xy')
 #
-# ftle = np.genfromtxt('double_gyre_ftle_neg.txt', skip_header=3).reshape((1000, 500))
-# x = np.linspace(0, 2, num=1000)
-# y = np.linspace(0, 1, num=500)
-# X, Y = np.meshgrid(x, y, indexing='ij')
-# plt.contourf(X, Y, ftle, 100, cmap=plt.cm.Reds)
+# ftle = np.genfromtxt('plots/doublegyre_negftle_t0_T2T0.txt')
+#
+# plt.contourf(x, y, ftle, 100, cmap=plt.cm.Reds)
 # plt.show()
-
-# End test
-
-
-
-
