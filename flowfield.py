@@ -31,6 +31,32 @@ class FlowField:
         yout = y0 + (dt / 6) * (f1 + 2 * f2 + 2 * f3 + f4)
         return yout
 
+    def compute_ftle(self, X, Y):
+        """
+        modified from https://github.com/jollybao/LCS/blob/master/src/FTLE.py
+
+        :param Y:
+        :return:
+        """
+        jacobian = np.empty([2, 2], float)
+        ftle = np.empty([H - 2, L - 2], float)
+
+        delta = self.xvals[1] - self.xvals[0]  # Even spacing, so just take diff at any index
+
+        for i in range(0, H - 2):
+            for j in range(0, L - 2):
+                jacobian[0][0] = (X[(1 + i) * L + 2 + j] - X[(1 + i) * L + j]) / (2 * delta)
+                jacobian[0][1] = (X[(2 + i) * L + 1 + j] - X[i * L + 1 + j]) / (2 * delta)
+                jacobian[1][0] = (Y[(1 + i) * L + 2 + j] - Y[(1 + i) * L + j]) / (2 * delta)
+                jacobian[1][1] = (Y[(2 + i) * L + 1 + j] - Y[i * L + 1 + j]) / (2 * delta)
+
+                # Green-Cauchy tensor
+                D = num.dot(num.transpose(J), J)
+                # its largest eigenvalue
+                lamda = LA.eigvals(D)
+                FTLE[i][j] = max(lamda)
+        return FTLE
+
     def plot_trajectories(self, xlim, ylim):
         """
         Creates movie of particle trajectories as assigned in compute_flowmap method
