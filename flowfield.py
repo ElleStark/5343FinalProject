@@ -78,6 +78,40 @@ class FlowField:
 
         self.ftle = ftle_dict
 
+    def ftle_movie(self):
+        """
+        Creates animation from dictionary of ftle values.
+        Must call compute_flow_map then compute_ftle before using this method.
+        :return: saves .mp4 of ftle evolution
+        """
+        # Get ftle fields as list - should be in order by ascending time
+        ftle_list = list(self.ftle.values())
+        x = self.x
+        y = self.y
+
+        fig, ax = plt.subplots()
+        # First snapshot
+        contours = plt.contourf(x, y, ftle_list[0], 100, cmap=plt.cm.Greys_r)
+        ax.set_aspect('equal', adjustable='box')
+
+        def update(frame):
+            #global contours
+            ax.clear()
+            ftle = ftle_list[frame]
+            # for c in contours.collections:
+            #     c.remove()
+            contours = plt.contourf(x, y, ftle, 100, cmap=plt.cm.Greys_r)
+
+            return (contours)
+
+        # len(DoubleGyre.trajectories[1]) for num frames?
+        traj_movie = animation.FuncAnimation(fig=fig, func=update, frames=len(ftle_list), interval=200, blit=True)
+
+        # save video
+        f = r"plots/ftle.mp4"
+        writervideo = animation.FFMpegWriter(fps=60)
+        traj_movie.save(f, writer=writervideo)
+
     def plot_trajectories(self, xlim, ylim):
         """
         Creates movie of particle trajectories as assigned in compute_flowmap method
