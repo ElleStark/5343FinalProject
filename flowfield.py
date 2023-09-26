@@ -16,60 +16,67 @@ class FlowField:
     def rk4singlestep(self, dt, t0, y0):
         """
         Single step of 4th-order Runge-Kutta integration. Use instead of scipy.integrate.solve_ivp to allow for
-        vectorized computation of bundle of initial conditions.
-        :param fun:
-        :param dt:
-        :param t0:
-        :param y0:
-        :return:
+        vectorized computation of bundle of initial conditions. Reference: https://www.youtube.com/watch?v=LRF4dGP4xeo
+        Note that self.vfield must be a function that returns an array of [u, v] values
+        :param dt: scalar value of desired time step
+        :param t0: start time for integration
+        :param y0: starting position of particles
+        :return: final position of particles
         """
-        # vfield must return array of [u, v]
+        # RK4 first computes velocity at full steps and partial steps
         f1 = self.vfield(t0, y0)
         f2 = self.vfield(t0 + dt / 2, y0 + (dt / 2) * f1)
         f3 = self.vfield(t0 + dt / 2, y0 + (dt / 2) * f2)
         f4 = self.vfield(t0 + dt, y0 + dt * f3)
-        yout = y0 + (dt / 6) * (f1 + 2 * f2 + 2 * f3 + f4)
-        return yout
+        # RK4 then takes a weighted average to move the particle
+        y_out = y0 + (dt / 6) * (f1 + 2 * f2 + 2 * f3 + f4)
+        return y_out
 
     def compute_ftle(self):
         """
         modified from https://github.com/jollybao/LCS/blob/master/src/FTLE.py
         Must run method 'compute_flow_map' before using this method.
-        :param Y:
-        :return:
+        :return: assigns self.ftle as dictionary of ftle values (one ftle field per time)
         """
         # Find height and width, and deltas of domain
         grid_height = len(self.yvals)
         grid_width = len(self.xvals)
         delta_x = self.xvals[1] - self.xvals[0]  # Even spacing, so just take difference at any index
         delta_y = self.yvals[1] - self.yvals[0]
-        # Initialize arrays for jacobian approximation and ftle
-        jacobian = np.empty([2, 2], float)
-        ftle = np.zeros([grid_height, grid_width], float)
 
-        # Use flow map to assign x and y final positions
-        x_final = self.flow_map[0]
-        x_final = x_final.reshape(grid_height, grid_width)
-        y_final = self.flow_map[1]
-        y_final = y_final.reshape(grid_height, grid_width)
+        # Initialize dictionary for FTLE fields
+        ftle_dict = {}
 
-        # Loop through positions and calculate ftle at each point
-        # Leave borders equal to zero (central differencing needs adjacent points for calculation)
-        for i in range(1, grid_width - 1):
-            for j in range(1, grid_height - 1):
-                jacobian[0][0] = (x_final[j, i + 1] - x_final[j, i - 1]) / (2 * delta_x)
-                jacobian[0][1] = (x_final[j + 1, i] - x_final[j - 1, i]) / (2 * delta_y)
-                jacobian[1][0] = (y_final[j, i + 1] - y_final[j, i - 1]) / (2 * delta_x)
-                jacobian[1][1] = (y_final[j + 1, i] - y_final[j - 1, i]) / (2 * delta_y)
+        for (time, fmap) in self.flow_map.items():
+            # Initialize arrays for jacobian approximation and ftle
+            jacobian = np.empty([2, 2], float)
+            ftle = np.zeros([grid_height, grid_width], float)
 
-                # Cauchy-Green tensor
-                gc_tensor = np.dot(np.transpose(jacobian), jacobian)
-                # its largest eigenvalue
-                lamda = LA.eigvals(gc_tensor)
-                max_eig = max(lamda)
-                ftle[j][i] = 1 / (2 * self.integration_time) * log(max_eig)
+            # Use flow map to assign x and y final positions
+            x_final = fmap[0]
+            x_final = x_final.reshape(grid_height, grid_width)
+            y_final = fmap[1]
+            y_final = y_final.reshape(grid_height, grid_width)
 
-        self.ftle = ftle
+            # Loop through positions and calculate ftle at each point
+            # Leave borders equal to zero (central differencing needs adjacent points for calculation)
+            for i in range(1, grid_width - 1):
+                for j in range(1, grid_height - 1):
+                    jacobian[0][0] = (x_final[j, i + 1] - x_final[j, i - 1]) / (2 * delta_x)
+                    jacobian[0][1] = (x_final[j + 1, i] - x_final[j - 1, i]) / (2 * delta_y)
+                    jacobian[1][0] = (y_final[j, i + 1] - y_final[j, i - 1]) / (2 * delta_x)
+                    jacobian[1][1] = (y_final[j + 1, i] - y_final[j - 1, i]) / (2 * delta_y)
+
+                    # Cauchy-Green tensor
+                    gc_tensor = np.dot(np.transpose(jacobian), jacobian)
+                    # its largest eigenvalue
+                    lamda = LA.eigvals(gc_tensor)
+                    max_eig = max(lamda)
+                    ftle[j][i] = 1 / (2 * self.integration_time) * log(max_eig)
+
+            ftle_dict[time] = ftle
+
+        self.ftle = ftle_dict
 
     def plot_trajectories(self, xlim, ylim):
         """
@@ -138,7 +145,7 @@ class AnalyticalFlow(FlowField):
 
         self.velocity_fields = vfield_dict
 
-    def compute_flow_map(self, T, tau):
+    def compute_flow_map(self, T, tau_list):
         """
         Uses Runge Kutta 4th order method to find flow map from velocity field
         :return:
@@ -149,6 +156,7 @@ class AnalyticalFlow(FlowField):
         L = abs(int(T / dt))  # need to calculate if dt definition is not based on T
         nx = len(self.xvals)
         ny = len(self.yvals)
+        fmap_dict = {}
 
         # Se up Initial Conditions
         x0 = self.x
@@ -158,23 +166,25 @@ class AnalyticalFlow(FlowField):
         yIC[1, :] = y0.reshape(nx * ny)
 
         # Compute Trajectories
-        # ADD TAU LOOP ONCE CODE IS WORKING IF DESIRED
-        yin = yIC
-        y_single_steps = np.zeros((2, L, nx * ny))
+        for tau in tau_list:
+            yin = yIC
+            y_single_steps = np.zeros((2, L, nx * ny))
 
-        for step in range(L):
-            tstep = step * dt
-            yout = self.rk4singlestep(dt, tstep, yin)
-            yin = yout
-            y_single_steps[:, step, :] = yout
+            for step in range(L):
+                tstep = step * dt + tau
+                yout = self.rk4singlestep(dt, tstep, yin)
+                yin = yout
+                y_single_steps[:, step, :] = yout
 
-        # Trajectories for all time steps
-        self.trajectories = y_single_steps
+            # Trajectories for all time steps
+            self.trajectories = y_single_steps
 
-        # Final position used for creating flow map
-        fmap = y_single_steps[:, -1, :]
-        fmap = np.squeeze(fmap)
-        self.flow_map = fmap
+            # Final position used for creating flow map
+            fmap = y_single_steps[:, -1, :]
+            fmap = np.squeeze(fmap)
+            fmap_dict[tau] = fmap
+
+        self.flow_map = fmap_dict
 
 
 class DoubleGyre(AnalyticalFlow):

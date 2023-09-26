@@ -18,16 +18,15 @@ import time
 a = 0.1  # velocity magnitude A aka U in Pratt et al., 2015
 eps = 0.25
 T_0 = 10
-t = np.linspace(0, 3.5*T_0, 351, endpoint=True)  # use 3.5T_0 as max t to match Pratt et al., 2015
 
 # Create double gyre object and calculate velocity fields
 n = 400  # number of grid steps in the x direction, use fewer when plotting velocity arrows
 DoubleGyre = flowfield.DoubleGyre(a, eps, T_0, n)
-start_time = time.time()
-DoubleGyre.compute_vfields(t)
-print('time to compute velocities is: ' + str(time.time()-start_time))
+
 
 ### Check: Plot velocity field at a few times
+#t = np.linspace(0, 3.5*T_0, 71, endpoint=True)  # use 3.5T_0 as max t to match Pratt et al., 2015
+#DoubleGyre.compute_vfields(t)
 #plot_times = [0, 0.25, 0.75]
 #for time in plot_times:
 #    plt.quiver(*DoubleGyre.velocity_fields[time*T_0])
@@ -36,9 +35,9 @@ print('time to compute velocities is: ' + str(time.time()-start_time))
 # Find flow map using Runge-Kutta 4th order method to integrate backwards from t = t0 to t = t0-T
 # Pratt et al. used integration time of 2-2.5 turnover times
 T = -2*T_0  # integration time
-tau = [0, 2.5*T_0, 3*T_0, 3.5*T_0]  # evolution time 0 to 3.5 T_0 [NOT USED YET]
+tau_list = [0, 2.5*T_0]  # evolution times
 start_time = time.time()
-DoubleGyre.compute_flow_map(T, tau)  # note that compute_flow_map also returns trajectories (position at every time step)
+DoubleGyre.compute_flow_map(T, tau_list)  # note that compute_flow_map also assigns dictionary of self.trajectories
 print('time to compute trajectories is: ' + str(time.time()-start_time))
 
 ### Check: plot trajectories
@@ -50,15 +49,19 @@ start_time = time.time()
 DoubleGyre.compute_ftle()
 print('time to compute FTLE is: ' + str(time.time()-start_time))
 
-# Save FTLE field for future plotting and/or computations
-np.savetxt('data/doublegyre_negftle_t0_T2T0_pratt.txt', DoubleGyre.ftle)
-ftle = DoubleGyre.ftle
-#ftle = np.genfromtxt('data/doublegyre_negftle_t0_T2T0_pratt.txt')
 
-fig, ax = plt.subplots()
 
-plt.contourf(DoubleGyre.x, DoubleGyre.y, ftle, 100, cmap=plt.cm.Greys_r)
-ax.set_aspect('equal', adjustable='box')
-plt.savefig('plots/doublegyre_negftle_t0_T2T0_pratt.png')
-plt.show()
+# Save individual FTLE fields
+# np.savetxt('data/doublegyre_negftle_t2.5T_T2T0_pratt.txt', DoubleGyre.ftle[tau_list[1]])
+#
+#
+# ftle = DoubleGyre.ftle[tau_list[1]]
+# #ftle = np.genfromtxt('data/doublegyre_negftle_t0_T2T0_pratt.txt')
+#
+# fig, ax = plt.subplots()
+#
+# plt.contourf(DoubleGyre.x, DoubleGyre.y, ftle, 100, cmap=plt.cm.Greys_r)
+# ax.set_aspect('equal', adjustable='box')
+# plt.savefig('plots/doublegyre_negftle_t2.5_T2T0_pratt.png')
+# plt.show()
 
