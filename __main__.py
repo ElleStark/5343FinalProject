@@ -35,7 +35,7 @@ DoubleGyre = flowfield.DoubleGyre(a, eps, T_0, n)
 # Find flow map using Runge-Kutta 4th order method to integrate backwards from t = t0 to t = t0-T
 # Pratt et al. used integration time of 2-2.5 turnover times
 T = -2*T_0  # integration time
-tau_list = np.linspace(0, T_0, 10)  # evolution times
+tau_list = np.linspace(0, T_0, 100)  # evolution times
 start_time = time.time()
 DoubleGyre.compute_flow_map(T, tau_list)  # note that compute_flow_map also assigns dictionary of self.trajectories
 print('time to compute trajectories is: ' + str(time.time()-start_time))
@@ -48,7 +48,7 @@ start_time = time.time()
 DoubleGyre.compute_ftle()
 print('time to compute FTLE is: ' + str(time.time()-start_time))
 
-DoubleGyre.ftle_movie()
+DoubleGyre.ftle_movie((0, 2), (0, 1))
 
 # Save individual FTLE fields
 # np.savetxt('data/doublegyre_negftle_t2.5T_T2T0_pratt.txt', DoubleGyre.ftle[tau_list[1]])

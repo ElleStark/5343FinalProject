@@ -78,7 +78,7 @@ class FlowField:
 
         self.ftle = ftle_dict
 
-    def ftle_movie(self):
+    def ftle_movie(self, xlim, ylim):
         """
         Creates animation from dictionary of ftle values.
         Must call compute_flow_map then compute_ftle before using this method.
@@ -90,27 +90,22 @@ class FlowField:
         y = self.y
 
         fig, ax = plt.subplots()
-        # First snapshot
-        contours = plt.contourf(x, y, ftle_list[0], 100, cmap=plt.cm.Greys_r)
+        ax.set(xlim=xlim, ylim=ylim)
         ax.set_aspect('equal', adjustable='box')
+        # First snapshot
+        ax.contourf(x, y, ftle_list[0], 100, cmap=plt.cm.Greys_r)
 
         def update(frame):
-            #global contours
-            ax.clear()
-            ftle = ftle_list[frame]
-            # for c in contours.collections:
-            #     c.remove()
-            contours = plt.contourf(x, y, ftle, 100, cmap=plt.cm.Greys_r)
+            for c in ax.collections:
+                c.remove()
+            ax.contourf(x, y, ftle_list[frame], 100, cmap=plt.cm.Greys_r)
 
-            return (contours)
-
-        # len(DoubleGyre.trajectories[1]) for num frames?
-        traj_movie = animation.FuncAnimation(fig=fig, func=update, frames=len(ftle_list), interval=200, blit=True)
+        ftle_movie = animation.FuncAnimation(fig=fig, func=update, frames=len(ftle_list), interval=200)
 
         # save video
         f = r"plots/ftle.mp4"
         writervideo = animation.FFMpegWriter(fps=60)
-        traj_movie.save(f, writer=writervideo)
+        ftle_movie.save(f, writer=writervideo)
 
     def plot_trajectories(self, xlim, ylim):
         """
@@ -208,13 +203,14 @@ class AnalyticalFlow(FlowField):
                 tstep = step * dt + tau
                 yout = self.rk4singlestep(dt, tstep, yin)
                 yin = yout
-                y_single_steps[:, step, :] = yout
+                #y_single_steps[:, step, :] = yout
 
             # Trajectories for all time steps
-            self.trajectories = y_single_steps
+            #self.trajectories = y_single_steps
 
             # Final position used for creating flow map
-            fmap = y_single_steps[:, -1, :]
+            #fmap = y_single_steps[:, -1, :]
+            fmap = yout
             fmap = np.squeeze(fmap)
             fmap_dict[tau] = fmap
 
