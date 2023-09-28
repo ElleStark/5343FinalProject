@@ -72,7 +72,7 @@ class FlowField:
                     # its largest eigenvalue
                     lamda = LA.eigvals(gc_tensor)
                     max_eig = max(lamda)
-                    ftle[j][i] = 1 / (2 * self.integration_time) * log(max_eig)
+                    ftle[j][i] = 1 / (2 * abs(self.integration_time)) * log(max_eig)
 
             ftle_dict[time] = ftle
 
@@ -232,8 +232,7 @@ class DoubleGyre(AnalyticalFlow):
     def vfield(self, time, y):
         """
         Calculates velocity field based on double gyre analytical equations
-        :param x: scalar x value OR ndarray of x values
-        :param y: scalar y value OR ndarray of y values
+        :param y: array of [x, y] particle locations where y[0] is list of x locations and y[1] is 1D array of y locations
         :param time: scalar value for time
         :return: list of u and v, where u is size x by y ndarray of horizontal velocity magnitudes,
         and v is size x by y ndarray of vertical velocity magnitudes.
