@@ -72,7 +72,7 @@ class FlowField:
                     # its largest eigenvalue
                     lamda = LA.eigvals(gc_tensor)
                     max_eig = max(lamda)
-                    ftle[j][i] = 1 / (2 * abs(self.integration_time)) * log(max_eig)
+                    ftle[j][i] = 1 / (2 * abs(self.integration_time)) * log(sqrt(max_eig))
 
             ftle_dict[time] = ftle
 
@@ -98,7 +98,7 @@ class FlowField:
         def update(frame):
             for c in ax.collections:
                 c.remove()
-            ax.contourf(x, y, ftle_list[frame], 100, cmap=plt.cm.Greys_r)
+            ax.contourf(x, y, ftle_list[frame], 100, cmap=plt.cm.Greys)
 
         ftle_movie = animation.FuncAnimation(fig=fig, func=update, frames=len(ftle_list), interval=200)
 
