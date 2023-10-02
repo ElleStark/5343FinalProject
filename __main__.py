@@ -40,27 +40,21 @@ start_time = time.time()
 DoubleGyre.compute_flow_map(T, tau_list)  # note that compute_flow_map also assigns dictionary of self.trajectories
 print('time to compute trajectories is: ' + str(time.time()-start_time))
 
-### Check: plot trajectories
+### Check: plot trajectories if small enough to be stored (use method 'compute_flow_map_w_trajs')
 #DoubleGyre.plot_trajectories([0, 2], [0, 1])
 
 # Compute FTLE: approximate Right Cauchy-Green strain tensor using central differencing, then find max eigenvalues
+# and plug into ftle equation
 start_time = time.time()
 DoubleGyre.compute_ftle()
 print('time to compute FTLE is: ' + str(time.time()-start_time))
 
+# Create movie of FTLE field, passing in xlim and ylim for plotting. Saves ftle.mp4 in \plots\ folder.
 DoubleGyre.ftle_movie((0, 2), (0, 1))
 
-# Save individual FTLE fields
+# Plot FTLE field at a single point in time. Saves ftle_snap.png in \plots\ folder.
+# DoubleGyre.ftle_snapshot(tau_list[-1])
+
+# Save individual FTLE field data if desired
 # np.savetxt('data/doublegyre_negftle_t2.5T_T2T0_pratt.txt', DoubleGyre.ftle[tau_list[1]])
-#
-#
-# ftle = DoubleGyre.ftle[tau_list[1]]
-# #ftle = np.genfromtxt('data/doublegyre_negftle_t0_T2T0_pratt.txt')
-#
-# fig, ax = plt.subplots()
-#
-# plt.contourf(DoubleGyre.x, DoubleGyre.y, ftle, 100, cmap=plt.cm.Greys_r)
-# ax.set_aspect('equal', adjustable='box')
-# plt.savefig('plots/doublegyre_negftle_t2.5_T2T0_pratt.png')
-# plt.show()
 

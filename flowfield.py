@@ -107,6 +107,19 @@ class FlowField:
         writervideo = animation.FFMpegWriter(fps=60)
         ftle_movie.save(f, writer=writervideo)
 
+    def ftle_snapshot(self, time):
+
+        # Get desired FTLE snapshot data
+        ftle = self.ftle[time]
+
+        # Plot contour map
+        fig, ax = plt.subplots()
+        plt.contourf(self.x, self.y, ftle, 100, cmap=plt.cm.Greys)
+        ax.set_aspect('equal', adjustable='box')
+
+        # Save figure
+        plt.savefig('plots/ftle_snap.png')
+
     def plot_trajectories(self, xlim, ylim):
         """
         Creates movie of particle trajectories as assigned in compute_flowmap method
