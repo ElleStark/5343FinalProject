@@ -13,6 +13,24 @@ import matplotlib.animation as animation
 
 
 class FlowField:
+
+    def improvedEuler_singlestep(self, dt, t0, y0):
+        """
+        Single step of 4th-order Runge-Kutta integration. Use instead of scipy.integrate.solve_ivp to allow for
+        vectorized computation of bundle of initial conditions. Reference: https://www.youtube.com/watch?v=LRF4dGP4xeo
+        Note that self.vfield must be a function that returns an array of [u, v] values
+        :param dt: scalar value of desired time step
+        :param t0: start time for integration
+        :param y0: starting position of particles
+        :return: final position of particles
+        """
+        # get the slopes at the initial and end points
+        f1 = self.vfield(t0, y0)
+        f2 = self.vfield(t0 + dt, y0 + dt * f1)
+        y_out = y0 + dt / 2 * (f1 + f2)
+
+        return y_out
+
     def rk4singlestep(self, dt, t0, y0):
         """
         Single step of 4th-order Runge-Kutta integration. Use instead of scipy.integrate.solve_ivp to allow for
@@ -187,14 +205,28 @@ class AnalyticalFlow(FlowField):
 
         self.velocity_fields = vfield_dict
 
-    def compute_flow_map(self, T, tau_list):
+    def compute_flow_map(self, T, tau_list, dt=None, method='RK4'):
         """
-        Uses Runge Kutta 4th order method to find flow map from velocity field
-        :return:
+        Uses either Improved Euler or Runge Kutta 4th order method to find flow map from velocity field
+        :param T: integration time for particle advection.
+        :param tau_list: List of times at which to calculate the flow map. Presumably one FTLE field snapshot will be
+                calculated for each tau value.
+        :param dt: integration timestep (length of time for each step of the advection algorithm).
+        :param method: one of 'RK4' (Runge-Kutta 4th Order) or 'IE' (Improved Euler 2nd order). Defaults to RK4.
+        :return: assigns self.flow_map, a dictionary of final particle position arrays with one array per tau
         """
         # keep track of integration time for use in FTLE calculations
         self.integration_time = T
-        dt = T / 1000
+
+        # Set up variables
+        if dt is None:
+            dt = T / 1000
+
+        if method == 'RK4':
+            advect = self.rk4singlestep
+        elif method == 'IE':
+            advect = self.improvedEuler_singlestep
+
         L = abs(int(T / dt))  # need to calculate if dt definition is not based on T
         nx = len(self.xvals)
         ny = len(self.yvals)
@@ -210,11 +242,11 @@ class AnalyticalFlow(FlowField):
         # Compute Trajectories
         for tau in tau_list:
             yin = yIC
-            y_single_steps = np.zeros((2, L, nx * ny))
+            # y_single_steps = np.zeros((2, L, nx * ny))
 
             for step in range(L):
                 tstep = step * dt + tau
-                yout = self.rk4singlestep(dt, tstep, yin)
+                yout = advect(dt, tstep, yin)
                 yin = yout
                 #y_single_steps[:, step, :] = yout
 
