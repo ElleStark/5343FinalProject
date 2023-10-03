@@ -1,6 +1,6 @@
 """
-Replicate figures from Pratt et al., 2015, available at https://doi.org/10.1063/1.4914467
 Elle Stark Fall 2023
+Replicate figures from Pratt et al., 2015, available at https://doi.org/10.1063/1.4914467
 
 Project organization inspired by C++ implementation for LCS analysis found here: https://github.com/stevenliuyi/lcs
 Code inspired by Python FTLE calculations used by: 1) Liu et al., 2018 (https://doi.org/10.1002/2017JC013390):
