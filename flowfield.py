@@ -242,25 +242,74 @@ class AnalyticalFlow(FlowField):
         # Compute Trajectories
         for tau in tau_list:
             yin = yIC
-            # y_single_steps = np.zeros((2, L, nx * ny))
 
             for step in range(L):
                 tstep = step * dt + tau
                 yout = advect(dt, tstep, yin)
                 yin = yout
-                #y_single_steps[:, step, :] = yout
-
-            # Trajectories for all time steps
-            #self.trajectories = y_single_steps
 
             # Final position used for creating flow map
-            #fmap = y_single_steps[:, -1, :]
             fmap = yout
             fmap = np.squeeze(fmap)
             fmap_dict[tau] = fmap
 
         self.flow_map = fmap_dict
 
+    def compute_flow_map_w_trajs(self, T, tau_list, dt=None, method='RK4'):
+        """
+        Uses either Improved Euler or Runge Kutta 4th order method to find flow map from velocity field.
+        ALSO stores positions at each step, so entire particle trajectories can be tracked.
+        :param T: integration time for particle advection.
+        :param tau_list: List of times at which to calculate the flow map. Presumably one FTLE field snapshot will be
+                calculated for each tau value.
+        :param dt: integration timestep (length of time for each step of the advection algorithm).
+        :param method: one of 'RK4' (Runge-Kutta 4th Order) or 'IE' (Improved Euler 2nd order). Defaults to RK4.
+        :return: assigns self.flow_map, a dictionary of final particle position arrays with one array per tau
+        """
+        # keep track of integration time for use in FTLE calculations
+        self.integration_time = T
+
+        # Set up variables
+        if dt is None:
+            dt = T / 1000
+
+        if method == 'RK4':
+            advect = self.rk4singlestep
+        elif method == 'IE':
+            advect = self.improvedEuler_singlestep
+
+        L = abs(int(T / dt))  # need to calculate if dt definition is not based on T
+        nx = len(self.xvals)
+        ny = len(self.yvals)
+        fmap_dict = {}
+
+        # Se up Initial Conditions
+        x0 = self.x
+        y0 = self.y
+        yIC = np.zeros((2, nx * ny))
+        yIC[0, :] = x0.reshape(nx * ny)
+        yIC[1, :] = y0.reshape(nx * ny)
+
+        # Compute Trajectories
+        for tau in tau_list:
+            yin = yIC
+            y_single_steps = np.zeros((2, L, nx * ny))
+
+            for step in range(L):
+                tstep = step * dt + tau
+                yout = advect(dt, tstep, yin)
+                yin = yout
+                y_single_steps[:, step, :] = yout
+
+            # Trajectories for all time steps
+            self.trajectories = y_single_steps
+
+            # Final position used for creating flow map
+            fmap = y_single_steps[:, -1, :]
+            fmap = np.squeeze(fmap)
+            fmap_dict[tau] = fmap
+
+        self.flow_map = fmap_dict
 
 class DoubleGyre(AnalyticalFlow):
 
