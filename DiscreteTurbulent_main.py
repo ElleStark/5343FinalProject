@@ -4,25 +4,18 @@ Expand FTLE computation code to handle discrete velocity fields.
 """
 
 import h5py
+import time
 
+# Desired time limits for reading in only a subset of the data.
+# SET TO 'None' IF ALL TIMES DESIRED!
+min_frame = 0
+max_frame = 250  # 250 frames is 5 seconds of data for 50Hz resolution
 
-# Desired domain for reading in only a subset of the data
-# limits = xxxxx
+start = time.time()  # track amount of time to get all the data
 
 # Read in all needed data from hdf5 files. For more info on hdf5 format, see https://www.hdfgroup.org/.
 # Use 'with' context manager to make sure h5 file is closed properly after using
 with h5py.File('D:/Re100_0_5mm_50Hz_16source_FTLE_manuscript.h5', 'r') as f:
-    # Numeric grids
-    xmesh_data = f.get('Model Metadata/xGrid')
-    ymesh_data = f.get('Model Metadata/yGrid')
-
-    # Velocities: for faster reading, can read in subset of u and v data here
-    u_data = f.get('Flow Data/u')  # dimensions (time, columns, rows) = (3001, 1001, 846)
-    v_data = f.get('Flow Data/v')  # dimensions (time, columns, rows) = (3001, 1001, 846)
-
-    # Odor data
-    odor_a_data = f.get('Odor Data/c1a')
-    odor_b_data = f.get('Odor Data/c1b')
 
     # Metadata: spatiotemporal resolution and domain size
     dt_freq = f.get('Model Metadata/timeResolution')
@@ -30,23 +23,55 @@ with h5py.File('D:/Re100_0_5mm_50Hz_16source_FTLE_manuscript.h5', 'r') as f:
     spatial_res = f.get('Model Metadata/spatialResolution')
     domain_size = f.get('Model Metadata/domainSize')
 
+    # Determine total number of frames in the data and assign limits for reading data if not specified by user.
+    if min_frame is None:
+        min_frame = 0
+    if max_frame is None:
+        max_frame = len(time_array_data)
+
+    # Numeric grids
+    xmesh_data = f.get('Model Metadata/xGrid')
+    ymesh_data = f.get('Model Metadata/yGrid')
+
+    # Velocities: for faster reading, can read in subset of u and v data here
+    u_data = f.get('Flow Data/u'[min_frame:max_frame])  # dimensions (time, columns, rows) = (3001, 1001, 846)
+    v_data = f.get('Flow Data/v'[min_frame:max_frame])  # dimensions (time, columns, rows) = (3001, 1001, 846)
+
+    # Odor data - select from odor pairs (cxa, cxb), where x is integers [1,...,8]
+    # higher numbers indicate increasing distance from each other. Source locations are symmetric about y=0.
+    odor_a_data = f.get('Odor Data/c1a'[min_frame:max_frame])  # location of c1a = [0,0.00375]
+    odor_b_data = f.get('Odor Data/c1b'[min_frame:max_frame])  # location of c1b = [0, -0.00375]
+
     # Copy data from H5 file into memory
-
-    xmesh = xmesh_data
-    ymesh = ymesh_data
-
-    u = u_data[:]
-    v = v_data[:]
-
-    odor_a = odor_a_data
-    odor_b = odor_b_data
-
-    dt = 1 / dt_freq
-    time_array = time_array_data
-    dx = spatial_res
+    # Metadata
+    dt = 1 / dt_freq[0]  # [seconds] based on frequency in Hz
+    time_array = time_array_data[:]
+    dx = spatial_res[0]
     domain_width = domain_size[0]  # [m] cross-stream distance
     domain_length = domain_size[1]  # [m] stream-wise distance
 
+    # Grids
+    xmesh = xmesh_data
+    ymesh = ymesh_data
 
-print(dx)
+    # Velocities
+    u = u_data[:]
+    v = v_data[:]
+
+    # Odors
+    odor_a = odor_a_data[:]
+    odor_b = odor_b_data[:]
+
+# Track and display how long it took to read in the data
+total_time = time.time()-start
+print('time to read in data: ' + str(total_time))
+
+# FTLE integration parameters
+ftle_dt = dt
+integration_time = 0.6  # integration time in seconds
+
+# Create grid of particles with desired spacing
+particle_spacing = dx / 2  # can determine visually if dx is appropriate based on smooth contours for FTLE field
+
+
 
