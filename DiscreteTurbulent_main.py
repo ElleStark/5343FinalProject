@@ -47,26 +47,6 @@ with h5py.File('D:/Re100_0_5mm_50Hz_16source_FTLE_manuscript.h5', 'r') as f:
     odor_a = f.get('Odor Data/c1a')[min_frame:max_frame]  # location of c1a = [0,0.00375]
     odor_b = f.get('Odor Data/c1b')[min_frame:max_frame]  # location of c1b = [0, -0.00375]
 
-    # Copy data from H5 file into memory
-    # Metadata
-    # dt = 1 / dt_freq[0]  # [seconds] based on frequency in Hz
-    # time_array = time_array_data[:]
-    # dx = spatial_res[0]
-    # domain_width = domain_size[0]  # [m] cross-stream distance
-    # domain_length = domain_size[1]  # [m] stream-wise distance
-
-    # Grids
-    # xmesh_velocity = xmesh_data[:]
-    # ymesh_velocity = ymesh_data[:]
-
-    # Velocities
-    # u = u_data[:]
-    # v = v_data[:]
-    #
-    # # Odors
-    # odor_a = odor_a_data[:]
-    # odor_b = odor_b_data[:]
-
 # Track and display how long it took to read in the data
 total_time = time.time()-start
 print('time to read in data: ' + str(total_time))
@@ -77,11 +57,11 @@ integration_time = 0.6  # integration time in seconds
 
 # Create grid of particles with desired spacing
 particle_spacing = spatial_res / 2  # can determine visually if dx is appropriate based on smooth contours for FTLE field
-# vectors based on velocity mesh limits and particle spacing
+# x and y vectors based on velocity mesh limits and particle spacing
 xvec_ftle = np.linspace(xmesh_uv[0][0], xmesh_uv[-1][0], int(domain_length / particle_spacing + 1))
 yvec_ftle = np.linspace(ymesh_uv[0][0], ymesh_uv[0][-1], int(domain_width / particle_spacing + 1))
-print(u.shape)
-print(xvec_ftle)
+
+xmesh_ftle, ymesh_ftle = np.meshgrid(xvec_ftle, yvec_ftle, indexing='xy')
 
 
 
