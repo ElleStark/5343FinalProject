@@ -7,6 +7,7 @@ import h5py
 import time
 import numpy as np
 import matplotlib.pyplot as plt
+import flowfield
 
 # 1. OBTAIN DATA
 
@@ -23,7 +24,7 @@ with h5py.File('D:/Re100_0_5mm_50Hz_16source_FTLE_manuscript.h5', 'r') as f:
 
     # Metadata: spatiotemporal resolution and domain size
     dt_freq = f.get('Model Metadata/timeResolution')[0]
-    dt = 1 / dt_freq  # convert from Hz to seconds
+    dt_data = 1 / dt_freq  # convert from Hz to seconds
     time_array_data = f.get('Model Metadata/timeArray')[:]
     spatial_res = f.get('Model Metadata/spatialResolution')[0]
     domain_size = f.get('Model Metadata/domainSize')
@@ -41,8 +42,8 @@ with h5py.File('D:/Re100_0_5mm_50Hz_16source_FTLE_manuscript.h5', 'r') as f:
     ymesh_uv = f.get('Model Metadata/yGrid')[:]
 
     # Velocities: for faster reading, can read in subset of u and v data here
-    u = f.get('Flow Data/u')[min_frame:max_frame]  # dimensions (time, columns, rows) = (3001, 1001, 846)
-    v = f.get('Flow Data/v')[min_frame:max_frame]  # dimensions (time, columns, rows) = (3001, 1001, 846)
+    u_data = f.get('Flow Data/u')[min_frame:max_frame]  # dimensions (time, columns, rows) = (3001, 1001, 846)
+    v_data = f.get('Flow Data/v')[min_frame:max_frame]  # dimensions (time, columns, rows) = (3001, 1001, 846)
 
     # Odor data - select from odor pairs (cxa, cxb), where x is integers [1,...,8]
     # higher numbers indicate increasing distance from each other. Source locations are symmetric about y=0.
@@ -71,6 +72,16 @@ plt.show()
 # 2. COMPUTE FTLE
 
 # FTLE integration parameters
-ftle_dt = dt
+ftle_dt = dt_data
 integration_time = 0.6  # integration time in seconds
+
+# Create DiscreteFlow object from flowfield to make use of flow map and ftle computation methods
+turb_lcs = flowfield.DiscreteFlow(xmesh_ftle, ymesh_ftle, u_data, v_data, xmesh_uv, ymesh_uv, dt_data)
+
+# QC Plot: check velocities at a few times
+t = [0, 0.5, 1]  # use 3.5T_0 as max t to match Pratt et al., 2015
+turb_lcs.compute_vfields(t)
+for time in t:
+    plt.quiver(*turb_lcs.velocity_fields[time], 'blue')
+    plt.show()
 

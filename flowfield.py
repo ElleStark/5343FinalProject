@@ -1,7 +1,7 @@
 """
 Classes for various flow map objects, including:
 - Double Gyre
-
+- Discrete flows
 Above classes are subclasses of AnalyticalFlow which is subclass of FlowField
 """
 
@@ -10,6 +10,7 @@ import numpy.linalg as LA
 from math import *
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+from scipy.interpolate import RegularGridInterpolator
 
 
 class FlowField:
@@ -319,9 +320,9 @@ class DoubleGyre(FlowField):
     def vfield(self, time, y):
         """
         Calculates velocity field based on double gyre analytical equations
-        :param y: array of [x, y] particle locations where y[0] is list of x locations and y[1] is 1D array of y locations
+        :param y: array of particle locations where y[0] is array of x locations and y[1] is array of y locations
         :param time: scalar value for time
-        :return: list of u and v, where u is size x by y ndarray of horizontal velocity magnitudes,
+        :return: array of u and v, where u is size x by y ndarray of horizontal velocity magnitudes,
         and v is size x by y ndarray of vertical velocity magnitudes.
         """
         f = y[0] * [1 + self.epsilon * np.sin(2 * pi * time / self.T_0) * (y[0] - 2)]
@@ -336,4 +337,38 @@ class DoubleGyre(FlowField):
 
         return vfield
 
-#class DiscreteFlow()
+class DiscreteFlow(FlowField):
+
+    def __init__(self, xmesh, ymesh, u_data, v_data, xmesh_uv, ymesh_uv, dt_uv):
+        super().__init__()
+
+        self.x = xmesh
+        self.y = ymesh
+        self.u_data = u_data
+        self.v_data = v_data
+        self.xmesh_uv = xmesh_uv
+        self.ymesh_uv = ymesh_uv
+        self.dt_uv = dt_uv
+
+    def vfield(self, time, y):
+        """
+        Calculates velocity field based on interpolation from existing data.
+        :param y: array of particle locations where y[0] is array of x locations and y[1] is array of y locations
+        :param time: scalar value for time
+        :return: array of u and v, where u is size x by y ndarray of horizontal velocity magnitudes,
+        and v is size x by y ndarray of vertical velocity magnitudes.
+        """
+        # Convert from time to frame
+        frame = time / self.dt_uv
+
+        # Set up functions - use cubic interpolation for continuity of the between the segments (improve smoothness)
+        u_interp = RegularGridInterpolator(self.xmesh_uv, np.flipud(self.ymesh_uv), np.flipud(self.u_data[frame]), method='cubic')
+        v_interp = RegularGridInterpolator(self.xmesh_uv, np.flipud(self.ymesh_uv), np.flipud(self.v_data[frame]), method='cubic')
+        # Interpolate u and v values at desired x (y[0]) and y (y[1]) points
+        u = u_interp(y[0], y[1])
+        v = v_interp(y[0], y[1])
+
+        vfield = np.array([u, v])
+
+        return vfield
+
