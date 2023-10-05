@@ -13,12 +13,16 @@ import matplotlib.animation as animation
 
 
 class FlowField:
+    def __init__(self):
+        #super().__init__()
+        # Attributes that can be defined by methods
+        self.velocity_fields = None
+        self.flow_map = None
+        self.trajectories = None
 
     def improvedEuler_singlestep(self, dt, t0, y0):
         """
-        Single step of 4th-order Runge-Kutta integration. Use instead of scipy.integrate.solve_ivp to allow for
-        vectorized computation of bundle of initial conditions. Reference: https://www.youtube.com/watch?v=LRF4dGP4xeo
-        Note that self.vfield must be a function that returns an array of [u, v] values
+        Single step of 2nd-order improved Euler integration. vfield must be a function that returns an array of [u, v] values
         :param dt: scalar value of desired time step
         :param t0: start time for integration
         :param y0: starting position of particles
@@ -173,17 +177,6 @@ class FlowField:
         writervideo = animation.FFMpegWriter(fps=60)
         traj_movie.save(f, writer=writervideo)
 
-
-class AnalyticalFlow(FlowField):
-
-    def __init__(self):
-        super().__init__()
-
-        # Attributes that can be defined by methods
-        self.velocity_fields = None
-        self.flow_map = None
-        self.trajectories = None
-
     def compute_vfields(self, t):
         """
         Computes spatial velocity field for list of desired times
@@ -311,7 +304,7 @@ class AnalyticalFlow(FlowField):
 
         self.flow_map = fmap_dict
 
-class DoubleGyre(AnalyticalFlow):
+class DoubleGyre(FlowField):
 
     def __init__(self, a, epsilon, T_0, n):
         super().__init__()
@@ -342,3 +335,5 @@ class DoubleGyre(AnalyticalFlow):
         vfield = np.array([u, v])  # convert to array for vectorization
 
         return vfield
+
+#class DiscreteFlow()

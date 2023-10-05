@@ -5,8 +5,10 @@ Expand FTLE computation code to handle discrete velocity fields.
 
 import h5py
 import time
-
 import numpy as np
+import matplotlib.pyplot as plt
+
+# 1. OBTAIN DATA
 
 # Desired time limits for reading in only a subset of the data.
 # SET TO None IF ALL TIMES DESIRED!
@@ -51,17 +53,24 @@ with h5py.File('D:/Re100_0_5mm_50Hz_16source_FTLE_manuscript.h5', 'r') as f:
 total_time = time.time()-start
 print('time to read in data: ' + str(total_time))
 
-# FTLE integration parameters
-ftle_dt = dt
-integration_time = 0.6  # integration time in seconds
-
 # Create grid of particles with desired spacing
-particle_spacing = spatial_res / 2  # can determine visually if dx is appropriate based on smooth contours for FTLE field
+particle_spacing = spatial_res / 2  # can determine visually if dx is appropriate based on smooth contours for FTLE
 # x and y vectors based on velocity mesh limits and particle spacing
 xvec_ftle = np.linspace(xmesh_uv[0][0], xmesh_uv[-1][0], int(domain_length / particle_spacing + 1))
 yvec_ftle = np.linspace(ymesh_uv[0][0], ymesh_uv[0][-1], int(domain_width / particle_spacing + 1))
-
 xmesh_ftle, ymesh_ftle = np.meshgrid(xvec_ftle, yvec_ftle, indexing='xy')
 
+# QC plot: initial positions of Lagrangian tracers
+fig, ax = plt.subplots()
+plt.scatter(xmesh_ftle, ymesh_ftle)
+ax.set_aspect('equal', adjustable='box')
+plt.xlim(0, 0.01)
+plt.ylim(0, 0.01)
+plt.show()
 
+# 2. COMPUTE FTLE
+
+# FTLE integration parameters
+ftle_dt = dt
+integration_time = 0.6  # integration time in seconds
 

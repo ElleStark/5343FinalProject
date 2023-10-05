@@ -17,7 +17,7 @@ eps = 0.25
 T_0 = 10
 
 # Create double gyre object and calculate velocity fields
-n = 1500  # number of grid steps in the x direction, use fewer when plotting velocity arrows
+n = 400  # number of grid steps in the x direction, use fewer when plotting velocity arrows
 DoubleGyre = flowfield.DoubleGyre(a, eps, T_0, n)
 
 
