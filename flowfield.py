@@ -222,8 +222,8 @@ class FlowField:
             advect = self.improvedEuler_singlestep
 
         L = abs(int(T / dt))  # need to calculate if dt definition is not based on T
-        nx = len(self.xvals)
-        ny = len(self.yvals)
+        nx = len(self.x[0, :])
+        ny = len(self.y[:, 0])
         fmap_dict = {}
 
         # Se up Initial Conditions
@@ -359,14 +359,21 @@ class DiscreteFlow(FlowField):
         and v is size x by y ndarray of vertical velocity magnitudes.
         """
         # Convert from time to frame
-        frame = time / self.dt_uv
+        frame = int(time / self.dt_uv)
+
+        # axes must be in ascending order, so need to flip y-axis, which also means flipping u and v upside-down
+        ymesh_vec = np.flipud(self.ymesh_uv)[:, 0]
+        xmesh_vec = self.xmesh_uv[0, :]
 
         # Set up functions - use cubic interpolation for continuity of the between the segments (improve smoothness)
-        u_interp = RegularGridInterpolator(self.xmesh_uv, np.flipud(self.ymesh_uv), np.flipud(self.u_data[frame]), method='cubic')
-        v_interp = RegularGridInterpolator(self.xmesh_uv, np.flipud(self.ymesh_uv), np.flipud(self.v_data[frame]), method='cubic')
+        u_interp = RegularGridInterpolator((ymesh_vec, xmesh_vec), np.squeeze(np.flipud(self.u_data[:, :, frame])),
+                                           method='linear')
+        v_interp = RegularGridInterpolator((ymesh_vec, xmesh_vec), np.squeeze(np.flipud(self.v_data[:, :, frame])),
+                                           method='linear')
+
         # Interpolate u and v values at desired x (y[0]) and y (y[1]) points
-        u = u_interp(y[0], y[1])
-        v = v_interp(y[0], y[1])
+        u = u_interp((y[1], y[0]))
+        v = v_interp((y[1], y[0]))
 
         vfield = np.array([u, v])
 
