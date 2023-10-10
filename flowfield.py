@@ -62,10 +62,10 @@ class FlowField:
         :return: assigns self.ftle as dictionary of ftle values (one ftle field per time)
         """
         # Find height and width, and deltas of domain
-        grid_height = len(self.yvals)
-        grid_width = len(self.xvals)
-        delta_x = self.xvals[1] - self.xvals[0]  # Even spacing, so just take difference at any index
-        delta_y = self.yvals[1] - self.yvals[0]
+        grid_height = len(self.y[:, 0])
+        grid_width = len(self.x[0, :])
+        delta_x = self.x[0][1] - self.x[0][0]  # Even spacing, so just take difference at any index
+        delta_y = self.y[1][0] - self.y[0][0]
 
         # Initialize dictionary for FTLE fields
         ftle_dict = {}
@@ -365,11 +365,13 @@ class DiscreteFlow(FlowField):
         ymesh_vec = np.flipud(self.ymesh_uv)[:, 0]
         xmesh_vec = self.xmesh_uv[0, :]
 
-        # Set up functions - use cubic interpolation for continuity of the between the segments (improve smoothness)
+        # Set up interpolation functions
+        # can use cubic interpolation for continuity of the between the segments (improve smoothness)
+        # set bounds_error=False to allow particles to go outside the domain by extrapolation
         u_interp = RegularGridInterpolator((ymesh_vec, xmesh_vec), np.squeeze(np.flipud(self.u_data[:, :, frame])),
-                                           method='linear')
+                                           method='linear', bounds_error=False, fill_value=None)
         v_interp = RegularGridInterpolator((ymesh_vec, xmesh_vec), np.squeeze(np.flipud(self.v_data[:, :, frame])),
-                                           method='linear')
+                                           method='linear', bounds_error=False, fill_value=None)
 
         # Interpolate u and v values at desired x (y[0]) and y (y[1]) points
         u = u_interp((y[1], y[0]))
