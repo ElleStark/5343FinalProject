@@ -113,7 +113,7 @@ turb_lcs = flowfield.DiscreteFlow(xmesh_ftle, ymesh_ftle, u_data, v_data, xmesh_
 
 # FTLE integration parameters
 ftle_dt = -dt_data  # negative for backward-time FTLE
-integration_time = -0.7  # integration time in seconds
+integration_time = -0.06  # integration time in seconds
 
 # Adjust start and end times for calculating FTLE so that enough data is available to integrate
 if integration_time < 0:
@@ -131,7 +131,6 @@ if integration_time > 0:
 
 # Evolution time - can manually input different start/end frames here instead of calculating based on data
 tau_list = np.linspace(start_time, end_time, int(abs(((end_time - start_time)/ftle_dt)))+1)
-
 
 # Compute flow map over integration time (and time calculations)
 start_timer = time.time()
