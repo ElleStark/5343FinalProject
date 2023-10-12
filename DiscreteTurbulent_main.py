@@ -11,16 +11,30 @@ import flowfield
 
 # 1. OBTAIN DATA
 
-# Desired time limits for reading in only a subset of the data.
-# SET TO None IF ALL TIMES DESIRED!
+# SUBSET: specify desired time and space limits for reading in only a subset of the data
+
+# Subset in time: SET TO None IF ALL TIMES DESIRED!
+# Slicing assumes data dimensions are in the format [time, x, y]
+# min_frame = 0
+# max_frame = 250  # 250 frames is 5 seconds of data for 50Hz resolution
+# # Subset in Space: SET TO None if ENTIRE DOMAIN DESIRED!
+# min_x_index = 0
+# max_x_index = 200  # 201 steps is 0.1 m for dx=0.005
+# min_y_index = 323  # 423 is approx index of the center of multisource plume data
+# max_y_index = 523
 min_frame = 0
 max_frame = 250  # 250 frames is 5 seconds of data for 50Hz resolution
-
-start = time.time()  # track amount of time to read in the data
+# Subset in Space: SET TO None if ENTIRE DOMAIN DESIRED!
+min_x_index = None
+max_x_index = None  # 201 steps is 0.1 m for dx=0.005
+min_y_index = None  # 423 is approx index of the center of multisource plume data
+max_y_index = None
 
 # Read in all needed data from hdf5 files. For more info on hdf5 format, see https://www.hdfgroup.org/.
 # Use 'with' context manager to make sure h5 file is closed properly after using.
 # Use [] to store data in memory, and use .item() method to convert single values from array to float.
+
+start = time.time()  # track amount of time to read in the data
 with h5py.File('D:/Re100_0_5mm_50Hz_16source_FTLE_manuscript.h5', 'r') as f:
 
     # Metadata: spatiotemporal resolution and domain size
@@ -32,24 +46,26 @@ with h5py.File('D:/Re100_0_5mm_50Hz_16source_FTLE_manuscript.h5', 'r') as f:
     domain_width = domain_size[0].item()  # [m] cross-stream distance
     domain_length = domain_size[1].item()  # [m] stream-wise distance
 
-    # Determine total number of frames in the data and assign limits for reading data if not specified by user.
-    if min_frame is None:
-        min_frame = 0
-    if max_frame is None:
-        max_frame = len(time_array_data)
+    # # Determine total time and space in the data and assign limits for reading data if not specified by user.
+    # if min_frame is None:
+    #     min_frame = 0
+    # if max_frame is None:
+    #     max_frame = len(time_array_data)
 
     # Numeric grids
-    xmesh_uv = f.get('Model Metadata/xGrid')[:].T
-    ymesh_uv = f.get('Model Metadata/yGrid')[:].T
+    xmesh_uv = f.get('Model Metadata/xGrid')[min_x_index:max_x_index, min_y_index:max_y_index].T
+    ymesh_uv = f.get('Model Metadata/yGrid')[min_x_index:max_x_index, min_y_index:max_y_index].T
 
     # Velocities: for faster reading, can read in subset of u and v data here
-    u_data = f.get('Flow Data/u')[min_frame:max_frame].T  # dimensions (time, columns, rows) = (3001, 1001, 846)
-    v_data = f.get('Flow Data/v')[min_frame:max_frame].T  # dimensions (time, columns, rows) = (3001, 1001, 846)
+    # dimensions of multisource plume data (time, columns, rows) = (3001, 1001, 846)
+    u_data = f.get('Flow Data/u')[min_frame:max_frame, min_x_index:max_x_index, min_y_index:max_y_index].T
+    v_data = f.get('Flow Data/v')[min_frame:max_frame, min_x_index:max_x_index, min_y_index:max_y_index].T
 
     # Odor data - select from odor pairs (cxa, cxb), where x is integers [1,...,8]
     # higher numbers indicate increasing distance from each other. Source locations are symmetric about y=0.
-    odor_a = f.get('Odor Data/c1a')[min_frame:max_frame].T  # location of c1a = [0,0.00375]
-    odor_b = f.get('Odor Data/c1b')[min_frame:max_frame].T  # location of c1b = [0, -0.00375]
+    # location of c1a = [0,0.00375], location of c1b = [0, -0.00375]
+    odor_a = f.get('Odor Data/c1a')[min_frame:max_frame, min_x_index:max_x_index, min_y_index:max_y_index].T
+    odor_b = f.get('Odor Data/c1b')[min_frame:max_frame, min_x_index:max_x_index, min_y_index:max_y_index].T
 
 # Track and display how long it took to read in the data
 total_time = time.time()-start
@@ -76,7 +92,7 @@ print('time to read in data: ' + str(total_time))
 # Create grid of particles with desired spacing
 # particle_spacing = spatial_res / 2  # can determine visually if dx is appropriate based on smooth contours for FTLE
 # Test with very coarse grid
-particle_spacing = spatial_res * 4
+particle_spacing = 0.002
 
 # x and y vectors based on velocity mesh limits and particle spacing
 xvec_ftle = np.linspace(xmesh_uv[0][0], xmesh_uv[0][-1], int(domain_length / particle_spacing + 1))
@@ -113,9 +129,14 @@ turb_lcs = flowfield.DiscreteFlow(xmesh_ftle, ymesh_ftle, u_data, v_data, xmesh_
 
 # FTLE integration parameters
 ftle_dt = -dt_data  # negative for backward-time FTLE
-integration_time = -0.06  # integration time in seconds
+integration_time = -0.5  # integration time in seconds
 
 # Adjust start and end times for calculating FTLE so that enough data is available to integrate
+if min_frame is None:
+    min_frame = 0
+if max_frame is None:
+    max_frame = len(time_array_data)
+
 if integration_time < 0:
     # If calculating backward FTLE, need to start at least one integration time after beginning of data
     start_frame = min_frame - integration_time / dt_data
