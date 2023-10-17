@@ -90,9 +90,9 @@ print('time to read in data: ' + str(total_time))
 # plt.close()
 
 # Create grid of particles with desired spacing
-# particle_spacing = spatial_res / 2  # can determine visually if dx is appropriate based on smooth contours for FTLE
+particle_spacing = spatial_res / 2  # can determine visually if dx is appropriate based on smooth contours for FTLE
 # Test with very coarse grid
-particle_spacing = 0.002
+# particle_spacing = 0.002
 
 # x and y vectors based on velocity mesh limits and particle spacing
 xvec_ftle = np.linspace(xmesh_uv[0][0], xmesh_uv[0][-1], int(domain_length / particle_spacing + 1))
@@ -129,7 +129,7 @@ turb_lcs = flowfield.DiscreteFlow(xmesh_ftle, ymesh_ftle, u_data, v_data, xmesh_
 
 # FTLE integration parameters
 ftle_dt = -dt_data  # negative for backward-time FTLE
-integration_time = -0.5  # integration time in seconds
+integration_time = -0.7  # integration time in seconds
 
 # Adjust start and end times for calculating FTLE so that enough data is available to integrate
 if min_frame is None:
@@ -151,7 +151,10 @@ if integration_time > 0:
     end_time = max_frame * dt_data - integration_time
 
 # Evolution time - can manually input different start/end frames here instead of calculating based on data
-tau_list = np.linspace(start_time, end_time, int(abs(((end_time - start_time)/ftle_dt)))+1)
+# tau_list = np.linspace(start_time, end_time, int(abs(((end_time - start_time)/ftle_dt)))+1)
+
+# For testing, just use a snapshot:
+tau_list = [start_time, (end_time-start_time/2), end_time]
 
 # Compute flow map over integration time (and time calculations)
 start_timer = time.time()
@@ -165,5 +168,10 @@ turb_lcs.compute_ftle()
 print('time to compute FTLE is: ' + str(time.time()-start_timer))
 
 # Create movie of FTLE field, passing in xlim and ylim for plotting. Saves ftle.mp4 in \plots\ folder.
-turb_lcs.ftle_movie((min(xvec_ftle), max(xvec_ftle)), (min(yvec_ftle), max(yvec_ftle)))
+# turb_lcs.ftle_movie((min(xvec_ftle), max(xvec_ftle)), (min(yvec_ftle), max(yvec_ftle)))
+
+# For testing, plot snapshot figures:
+turb_lcs.ftle_snapshot(tau_list[0], name='t0')
+turb_lcs.ftle_snapshot(tau_list[1], name='t2_5')
+turb_lcs.ftle_snapshot(tau_list[2], name='t5')
 

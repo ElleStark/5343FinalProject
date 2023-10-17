@@ -117,11 +117,14 @@ class FlowField:
         ax.set_aspect('equal', adjustable='box')
         # First snapshot
         ax.contourf(x, y, ftle_list[0], 100, cmap=plt.cm.Greys_r)
+        #ftle_plot = ax.pcolormesh(x, y, ftle_list[0], cmap=plt.cm.Greys)
 
         def update(frame):
             for c in ax.collections:
-                c.remove()
+               c.remove()
             ax.contourf(x, y, ftle_list[frame], 100, cmap=plt.cm.Greys)
+            #ftle_plot.set_array(ftle_list[frame].ravel())
+            return ftle_plot
 
         ftle_movie = animation.FuncAnimation(fig=fig, func=update, frames=len(ftle_list), interval=200)
 
@@ -130,7 +133,7 @@ class FlowField:
         writervideo = animation.FFMpegWriter(fps=60)
         ftle_movie.save(f, writer=writervideo)
 
-    def ftle_snapshot(self, time):
+    def ftle_snapshot(self, time, name='1'):
 
         # Get desired FTLE snapshot data
         ftle = self.ftle[time]
@@ -141,7 +144,7 @@ class FlowField:
         ax.set_aspect('equal', adjustable='box')
 
         # Save figure
-        plt.savefig('plots/ftle_snap.png')
+        plt.savefig('plots/ftle_snap_{name}.png'.format(name=name))
 
     def plot_trajectories(self, xlim, ylim):
         """
