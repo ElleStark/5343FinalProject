@@ -11,6 +11,7 @@ from math import *
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from scipy.interpolate import RegularGridInterpolator
+#import cv2
 
 
 class FlowField:
@@ -112,6 +113,12 @@ class FlowField:
         x = self.x
         y = self.y
 
+        fourcc = cv2.VideoWriter_fourcc(*'XVID')
+        vLCS = cv2.VideoWriter('Re100_16source_backwardFTLE_T06sec_fine_short_RK4.mp4', fourcc, 20.0, (1000, 800))
+
+
+
+
         fig, ax = plt.subplots()
         ax.set(xlim=xlim, ylim=ylim)
         ax.set_aspect('equal', adjustable='box')
@@ -133,15 +140,18 @@ class FlowField:
         writervideo = animation.FFMpegWriter(fps=60)
         ftle_movie.save(f, writer=writervideo)
 
-    def ftle_snapshot(self, time, name='1'):
+    def ftle_snapshot(self, time, name='1', odor=False):
 
         # Get desired FTLE snapshot data
         ftle = self.ftle[time]
 
-        # Plot contour map
+        # Plot contour map of FTLE
         fig, ax = plt.subplots()
         plt.contourf(self.x, self.y, ftle, 100, cmap=plt.cm.Greys)
         ax.set_aspect('equal', adjustable='box')
+
+        # If odor is True, overlay odor data
+
 
         # Save figure
         plt.savefig('plots/ftle_snap_{name}.png'.format(name=name))

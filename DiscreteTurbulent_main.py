@@ -171,7 +171,7 @@ print('time to compute FTLE is: ' + str(time.time()-start_timer))
 # turb_lcs.ftle_movie((min(xvec_ftle), max(xvec_ftle)), (min(yvec_ftle), max(yvec_ftle)))
 
 # For testing, plot snapshot figures:
-turb_lcs.ftle_snapshot(tau_list[0], name='t0')
-turb_lcs.ftle_snapshot(tau_list[1], name='t2_5')
-turb_lcs.ftle_snapshot(tau_list[2], name='t5')
+turb_lcs.ftle_snapshot(tau_list[0], name='t0', odor=True, odor1=odor_a, odor2=odor_b)
+turb_lcs.ftle_snapshot(tau_list[1], name='t2_5', odor=True, odor1=odor_a, odor2=odor_b)
+turb_lcs.ftle_snapshot(tau_list[2], name='t5', odor=True, odor1=odor_a, odor2=odor_b)
 
