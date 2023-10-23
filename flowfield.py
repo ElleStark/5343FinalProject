@@ -140,7 +140,7 @@ class FlowField:
         writervideo = animation.FFMpegWriter(fps=60)
         ftle_movie.save(f, writer=writervideo)
 
-    def ftle_snapshot(self, time, name='1', odor=False):
+    def ftle_snapshot(self, time, name='1', odor=None):
 
         # Get desired FTLE snapshot data
         ftle = self.ftle[time]
@@ -150,8 +150,12 @@ class FlowField:
         plt.contourf(self.x, self.y, ftle, 100, cmap=plt.cm.Greys)
         ax.set_aspect('equal', adjustable='box')
 
-        # If odor is True, overlay odor data
-
+        # If odor data is present, overlay odor data
+        if odor is not None:
+            # Convert from time to frame
+            frame = int(time / self.dt_uv)
+            plt.contourf(self.xmesh_uv, self.ymesh_uv, np.squeeze(odor[0][:, :, frame]), 100, cmap=plt.cm.Reds)
+            plt.contourf(self.xmesh_uv, self.ymesh_uv, np.squeeze(odor[1][:, :, frame]), 100, cmap=plt.cm.Blues)
 
         # Save figure
         plt.savefig('plots/ftle_snap_{name}.png'.format(name=name))
