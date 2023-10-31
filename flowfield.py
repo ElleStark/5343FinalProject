@@ -56,6 +56,83 @@ class FlowField:
         y_out = y0 + (dt / 6) * (f1 + 2 * f2 + 2 * f3 + f4)
         return y_out
 
+    def compute_fsle(self, r=2):
+        """
+        Must run method 'compute_flow_map_w_trajs' before using this method.
+        :return: assigns self.fsle as dictionary of fsle values (one fsle field per time)
+        """
+        # Find height and width, and deltas of domain
+        grid_height = len(self.y[:, 0])
+        grid_width = len(self.x[0, :])
+        delta_x = self.x[0][1] - self.x[0][0]  # Even spacing, so just take difference at any index
+        delta_y = self.y[1][0] - self.y[0][0]
+
+        # Assign final separation distance based on r * original distance
+        delta_f = r * sqrt((2*delta_x)**2 + (2*delta_y)**2)
+        # Initialize dictionary for FSLE fields
+        fsle_dict = {}
+
+        for (start_time, trajs) in self.trajectories.items():
+            # initialize matrices
+            time_to_sep = np.zeros([grid_height, grid_width], float)
+            x_end_pos = np.zeros([grid_height, grid_width], float)
+            y_end_pos = np.zeros([grid_height, grid_width], float)
+            fsle = np.empty([grid_height, grid_width], float)
+            lyp_time = np.zeros([grid_height, grid_width], float)
+
+            # trajs is list [0=x or 1=y, timestep, positions nx x ny]
+            time_list = range(len(trajs[0, :, 0]))
+            for timestep in time_list:
+                #timestep = time_list[k]
+                traj_step = trajs[:, timestep, :]
+                separation = np.zeros([grid_height, grid_width], float)
+
+                # Use trajectories to assign x and y final positions at each location for that timestep
+                x_final = np.squeeze(traj_step[0, :])
+                x_final = x_final.reshape(grid_height, grid_width)
+                y_final = np.squeeze(traj_step[1, :])
+                y_final = y_final.reshape(grid_height, grid_width)
+
+                # Calculate separation of trajectories. When separation reaches desired factor, record time and positions.
+                for i in range(1, grid_width - 1):
+                    for j in range(1, grid_height - 1):
+                        separation[j, i] = np.sqrt(((x_final[j, i + 1] - x_final[j, i - 1])**2) + (y_final[j + 1, i] - y_final[j - 1, i])**2)
+                        if separation[j, i] >= delta_f and time_to_sep[j, i] == 0:
+                            time_to_sep[j, i] = timestep * 0.02
+                            x_end_pos[j, i] = x_final[j, i]
+                            y_end_pos[j, i] = y_final[j, i]
+                            #lyp_time[j, i] = timestep - start_time
+                            fsle[j, i] = 1 / time_to_sep[j, i] * log(r)
+
+
+            # # Initialize arrays for jacobian approximation and fsle
+            # jacobian = np.empty([2, 2], float)
+            #
+            # # Loop through positions and calculate fsle at each point
+            # # Leave borders equal to zero (central differencing needs adjacent points for calculation)
+            # for i in range(1, grid_width - 1):
+            #     for j in range(1, grid_height - 1):
+            #         jacobian[0][0] = (x_end_pos[j, i + 1] - x_end_pos[j, i - 1]) / (2 * delta_x)
+            #         jacobian[0][1] = (x_end_pos[j + 1, i] - x_end_pos[j - 1, i]) / (2 * delta_y)
+            #         jacobian[1][0] = (y_end_pos[j, i + 1] - y_end_pos[j, i - 1]) / (2 * delta_x)
+            #         jacobian[1][1] = (y_end_pos[j + 1, i] - y_end_pos[j - 1, i]) / (2 * delta_y)
+            #
+            #         # Cauchy-Green tensor
+            #         gc_tensor = np.dot(np.transpose(jacobian), jacobian)
+            #         # its largest eigenvalue
+            #         lamda = LA.eigvals(gc_tensor)
+            #         max_eig = max(lamda)
+            #
+            #         # Leave FSLE as 0 if lyp_time = 0
+            #         lyp_time = time_to_sep[j, i] - start_time
+            #         if abs(lyp_time) > 0 & abs(max_eig) > 0:
+            #             fsle[j][i] = 1 / (2 * abs(lyp_time)) * log(sqrt(abs(max_eig)))
+
+            fsle_dict[start_time] = fsle
+
+        self.fsle = fsle_dict
+
+
     def compute_ftle(self):
         """
         modified from https://github.com/jollybao/LCS/blob/master/src/FTLE.py
@@ -116,9 +193,6 @@ class FlowField:
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
         vLCS = cv2.VideoWriter('Re100_16source_backwardFTLE_T06sec_fine_short_RK4.mp4', fourcc, 20.0, (1000, 800))
 
-
-
-
         fig, ax = plt.subplots()
         ax.set(xlim=xlim, ylim=ylim)
         ax.set_aspect('equal', adjustable='box')
@@ -140,25 +214,41 @@ class FlowField:
         writervideo = animation.FFMpegWriter(fps=60)
         ftle_movie.save(f, writer=writervideo)
 
-    def ftle_snapshot(self, time, name='1', odor=None):
-
-        # Get desired FTLE snapshot data
-        ftle = self.ftle[time]
+    def ftle_snapshot(self, time, name='1', odor=None, type='FTLE'):
 
         # Plot contour map of FTLE
         fig, ax = plt.subplots()
-        plt.contourf(self.x, self.y, ftle, 100, cmap=plt.cm.Greys)
+
+        if type == 'FTLE':
+            # Get desired FTLE snapshot data
+            ftle = self.ftle[time]
+            plt.contourf(self.x, self.y, ftle, 100, cmap=plt.cm.Greys)
+        if type == 'FSLE':
+            fsle = self.fsle[time]
+            plt.contourf(self.x, self.y, fsle, 100, cmap=plt.cm.Greys)
+
         ax.set_aspect('equal', adjustable='box')
 
         # If odor data is present, overlay odor data
         if odor is not None:
             # Convert from time to frame
             frame = int(time / self.dt_uv)
-            plt.contourf(self.xmesh_uv, self.ymesh_uv, np.squeeze(odor[0][:, :, frame]), 100, cmap=plt.cm.Reds)
-            plt.contourf(self.xmesh_uv, self.ymesh_uv, np.squeeze(odor[1][:, :, frame]), 100, cmap=plt.cm.Blues)
+
+            # create masked arrays of odor data to allow transparency where there is very low odor
+            odor_a = np.squeeze(odor[0][:, :, frame])
+            # odor_a = np.ma.masked_array(odor_a, odor_a < 0.0001)
+            odor_b = np.squeeze(odor[1][:, :, frame])
+            # odor_b = np.ma.masked_array(odor_b, odor_b < 0.0001)
+
+            # plt.contourf(self.xmesh_uv, self.ymesh_uv, np.squeeze(odor[0][:, :, frame]),
+            #              100, cmap=plt.cm.Reds, alpha=0.4)
+            # plt.contourf(self.xmesh_uv, self.ymesh_uv, np.squeeze(odor[1][:, :, frame]),
+            #              100, cmap=plt.cm.Blues, alpha=0.4)
+            plt.pcolormesh(self.xmesh_uv, self.ymesh_uv, odor_a, cmap=plt.cm.Reds, alpha=0.5)
+            plt.pcolormesh(self.xmesh_uv, self.ymesh_uv, odor_b, cmap=plt.cm.Blues, alpha=0.5)
 
         # Save figure
-        plt.savefig('plots/ftle_snap_{name}.png'.format(name=name))
+        plt.savefig('plots/{type}_snap_{name}.png'.format(type=type, name=name))
 
     def plot_trajectories(self, xlim, ylim):
         """
@@ -290,9 +380,10 @@ class FlowField:
             advect = self.improvedEuler_singlestep
 
         L = abs(int(T / dt))  # need to calculate if dt definition is not based on T
-        nx = len(self.xvals)
-        ny = len(self.yvals)
+        nx = len(self.x[0, :])
+        ny = len(self.y[:, 0])
         fmap_dict = {}
+        traj_dict = {}
 
         # Se up Initial Conditions
         x0 = self.x
@@ -313,7 +404,7 @@ class FlowField:
                 y_single_steps[:, step, :] = yout
 
             # Trajectories for all time steps
-            self.trajectories = y_single_steps
+            traj_dict[tau] = y_single_steps
 
             # Final position used for creating flow map
             fmap = y_single_steps[:, -1, :]
@@ -321,6 +412,7 @@ class FlowField:
             fmap_dict[tau] = fmap
 
         self.flow_map = fmap_dict
+        self.trajectories = traj_dict
 
 class DoubleGyre(FlowField):
 
