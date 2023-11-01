@@ -71,14 +71,16 @@ class FlowField:
         delta_f = r * sqrt((2*delta_x)**2 + (2*delta_y)**2)
         # Initialize dictionary for FSLE fields
         fsle_dict = {}
+        lyptime_dict = {}
 
         for (start_time, trajs) in self.trajectories.items():
-            # initialize matrices
+            # initialize arrays
             time_to_sep = np.zeros([grid_height, grid_width], float)
-            x_end_pos = np.zeros([grid_height, grid_width], float)
-            y_end_pos = np.zeros([grid_height, grid_width], float)
+            #x_end_pos = np.zeros([grid_height, grid_width], float)
+            #y_end_pos = np.zeros([grid_height, grid_width], float)
             fsle = np.empty([grid_height, grid_width], float)
-            lyp_time = np.zeros([grid_height, grid_width], float)
+            #lyp_time = np.zeros([grid_height, grid_width], float)
+            #jacobian = np.empty([2, 2], float)
 
             # trajs is list [0=x or 1=y, timestep, positions nx x ny]
             time_list = range(len(trajs[0, :, 0]))
@@ -99,38 +101,26 @@ class FlowField:
                         separation[j, i] = np.sqrt(((x_final[j, i + 1] - x_final[j, i - 1])**2) + (y_final[j + 1, i] - y_final[j - 1, i])**2)
                         if separation[j, i] >= delta_f and time_to_sep[j, i] == 0:
                             time_to_sep[j, i] = timestep * 0.02
-                            x_end_pos[j, i] = x_final[j, i]
-                            y_end_pos[j, i] = y_final[j, i]
-                            #lyp_time[j, i] = timestep - start_time
-                            fsle[j, i] = 1 / time_to_sep[j, i] * log(r)
+                            fsle[j, i] = log(r) / abs(time_to_sep[j, i])
 
-
-            # # Initialize arrays for jacobian approximation and fsle
-            # jacobian = np.empty([2, 2], float)
-            #
-            # # Loop through positions and calculate fsle at each point
-            # # Leave borders equal to zero (central differencing needs adjacent points for calculation)
-            # for i in range(1, grid_width - 1):
-            #     for j in range(1, grid_height - 1):
-            #         jacobian[0][0] = (x_end_pos[j, i + 1] - x_end_pos[j, i - 1]) / (2 * delta_x)
-            #         jacobian[0][1] = (x_end_pos[j + 1, i] - x_end_pos[j - 1, i]) / (2 * delta_y)
-            #         jacobian[1][0] = (y_end_pos[j, i + 1] - y_end_pos[j, i - 1]) / (2 * delta_x)
-            #         jacobian[1][1] = (y_end_pos[j + 1, i] - y_end_pos[j - 1, i]) / (2 * delta_y)
-            #
-            #         # Cauchy-Green tensor
-            #         gc_tensor = np.dot(np.transpose(jacobian), jacobian)
-            #         # its largest eigenvalue
-            #         lamda = LA.eigvals(gc_tensor)
-            #         max_eig = max(lamda)
-            #
-            #         # Leave FSLE as 0 if lyp_time = 0
-            #         lyp_time = time_to_sep[j, i] - start_time
-            #         if abs(lyp_time) > 0 & abs(max_eig) > 0:
-            #             fsle[j][i] = 1 / (2 * abs(lyp_time)) * log(sqrt(abs(max_eig)))
+                            # jacobian[0][0] = (x_final[j, i + 1] - x_final[j, i - 1]) / (2 * delta_x)
+                            # jacobian[0][1] = (x_final[j + 1, i] - x_final[j - 1, i]) / (2 * delta_y)
+                            # jacobian[1][0] = (y_final[j, i + 1] - y_final[j, i - 1]) / (2 * delta_x)
+                            # jacobian[1][1] = (y_final[j + 1, i] - y_final[j - 1, i]) / (2 * delta_y)
+                            #
+                            # # Cauchy-Green tensor
+                            # gc_tensor = np.dot(np.transpose(jacobian), jacobian)
+                            # # its largest eigenvalue
+                            # lamda = LA.eigvals(gc_tensor)
+                            # max_eig = max(lamda)
+                            #
+                            # fsle[j, i] = 1 / (2 * abs(time_to_sep[j, i])) * log(sqrt(max_eig))
 
             fsle_dict[start_time] = fsle
+            lyptime_dict[start_time] = time_to_sep
 
         self.fsle = fsle_dict
+        self.lyptime = lyptime_dict
 
 
     def compute_ftle(self):
@@ -173,7 +163,7 @@ class FlowField:
                     # its largest eigenvalue
                     lamda = LA.eigvals(gc_tensor)
                     max_eig = max(lamda)
-                    ftle[j][i] = 1 / (2 * abs(self.integration_time)) * log(sqrt(max_eig))
+                    ftle[j][i] = 1 / (abs(self.integration_time)) * log(sqrt(max_eig))
 
             ftle_dict[time] = ftle
 
@@ -223,9 +213,13 @@ class FlowField:
             # Get desired FTLE snapshot data
             ftle = self.ftle[time]
             plt.contourf(self.x, self.y, ftle, 100, cmap=plt.cm.Greys)
+            plt.title('FTLE')
+            plt.colorbar()
         if type == 'FSLE':
             fsle = self.fsle[time]
             plt.contourf(self.x, self.y, fsle, 100, cmap=plt.cm.Greys)
+            plt.title('FSLE')
+            plt.colorbar()
 
         ax.set_aspect('equal', adjustable='box')
 
@@ -249,6 +243,20 @@ class FlowField:
 
         # Save figure
         plt.savefig('plots/{type}_snap_{name}.png'.format(type=type, name=name))
+
+    def plot_lyptime(self, time, name='1'):
+        # Plot contour map of separation time used in FSLE computations
+        fig, ax = plt.subplots()
+
+        lyptime = self.lyptime[time]
+        plt.contourf(self.x, self.y, lyptime, 100, cmap=plt.cm.Greys)
+
+        ax.set_aspect('equal', adjustable='box')
+        plt.colorbar()
+        plt.title('Time to Separation (sec)')
+
+        # Save figure
+        plt.savefig('plots/LypTime_snap_{name}.png'.format(name=name))
 
     def plot_trajectories(self, xlim, ylim):
         """
