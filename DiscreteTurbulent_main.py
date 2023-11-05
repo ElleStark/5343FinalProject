@@ -15,14 +15,6 @@ import math
 # SUBSET: specify desired time and space limits for reading in only a subset of the data
 
 # Subset in time: SET TO None IF ALL TIMES DESIRED!
-# Slicing assumes data dimensions are in the format [time, x, y]
-# min_frame = 0
-# max_frame = 250  # 250 frames is 5 seconds of data for 50Hz resolution
-# # Subset in Space: SET TO None if ENTIRE DOMAIN DESIRED!
-# min_x_index = 0
-# max_x_index = 200  # 201 steps is 0.1 m for dx=0.005
-# min_y_index = 323  # 423 is approx index of the center of multisource plume data
-# max_y_index = 523
 min_frame = 0
 max_frame = 250  # 250 frames is 5 seconds of data for 50Hz resolution
 # Subset in Space: SET TO None if ENTIRE DOMAIN DESIRED!
@@ -47,12 +39,6 @@ with h5py.File('D:/Re100_0_5mm_50Hz_16source_FTLE_manuscript.h5', 'r') as f:
     domain_width = domain_size[0].item()  # [m] cross-stream distance
     domain_length = domain_size[1].item()  # [m] stream-wise distance
 
-    # # Determine total time and space in the data and assign limits for reading data if not specified by user.
-    # if min_frame is None:
-    #     min_frame = 0
-    # if max_frame is None:
-    #     max_frame = len(time_array_data)
-
     # Numeric grids
     xmesh_uv = f.get('Model Metadata/xGrid')[min_x_index:max_x_index, min_y_index:max_y_index].T
     ymesh_uv = f.get('Model Metadata/yGrid')[min_x_index:max_x_index, min_y_index:max_y_index].T
@@ -72,7 +58,7 @@ with h5py.File('D:/Re100_0_5mm_50Hz_16source_FTLE_manuscript.h5', 'r') as f:
 total_time = time.time()-start
 print('time to read in data: ' + str(total_time))
 
-# QC Plot: udata and vdata for comparing to interpolated figure
+# QC Plots: udata and vdata for comparing to interpolated figure
 # plt.pcolor(u_data[:, :, 25])
 # plt.savefig('plots/u_data_t0_5.png')
 # plt.show()
@@ -125,6 +111,7 @@ turb_lcs = flowfield.DiscreteFlow(xmesh_ftle, ymesh_ftle, u_data, v_data, xmesh_
 #     plt.pcolor(turb_lcs.velocity_fields[time][3])
 #     plt.savefig('plots/v_interp_t{time}.png'.format(time=time))
 #     plt.show()
+
 
 # 2. COMPUTE FTLE
 

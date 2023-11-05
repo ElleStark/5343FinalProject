@@ -103,6 +103,7 @@ class FlowField:
                             time_to_sep[j, i] = timestep * 0.02
                             fsle[j, i] = log(r) / abs(time_to_sep[j, i])
 
+                            # CHECK: same results achieved when calculated as log(max_eig) instead of log(r)
                             # jacobian[0][0] = (x_final[j, i + 1] - x_final[j, i - 1]) / (2 * delta_x)
                             # jacobian[0][1] = (x_final[j + 1, i] - x_final[j - 1, i]) / (2 * delta_y)
                             # jacobian[1][0] = (y_final[j, i + 1] - y_final[j, i - 1]) / (2 * delta_x)
