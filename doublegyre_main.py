@@ -9,7 +9,12 @@ https://github.com/stevenliuyi/ocean-ftle and 2) https://github.com/jollybao/LCS
 import matplotlib.pyplot as plt
 import numpy as np
 import flowfield
+import matplotlib.animation as animation
+import matplotlib.pyplot as plt
 import time
+
+
+
 
 # Constants for double gyre:
 a = 0.1  # velocity magnitude A aka U in Pratt et al., 2015
@@ -61,11 +66,44 @@ tau_list = np.linspace(0, T_0, 100)  # evolution times
 
 # PARTICLE TRACKING MODEL & MOVIE
 
-np = 100000  # number of particles initialized in each location
-dt = T/50
-D = 1
+num_particles = 10000  # number of particles initialized in each location
+M = 1 / num_particles  # total mass = 1, so tag each particle with a mass of 1/#particles
+dt = -T/500
+D = 10 ** (-5)
+blob1_ctr = [1.6, 0.5]  # red dye
+blob2_ctr = [0.5, 0.5]  # blue dye
 
-DoubleGyre.track_particles_rw()
+blob1_pos, blob2_pos = DoubleGyre.track_particles_rw(num_particles, blob1_ctr, blob2_ctr, dt, 4 * T_0, D)
+
+# Create movies of particle tracking and FTLEs
+plt.close('all')
+fig, ax = plt.subplots()
+
+ax.set(xlim=(0, 2), ylim=(0, 1))
+ax.set_aspect('equal', adjustable='box')
+
+# QC: plot first snapshot
+# blobs_plot = ax.pcolormesh(blob1_pos[0, 0, :], blob1_pos[1, 0, :], blob1_pos[0], cmap=plt.cm.Reds)
+# blobs_plot = ax.scatter(blob1_pos[:, 0, :])
+ax.scatter(blob1_pos[0, 0, :], blob1_pos[1, 0, :], color='red')
+ax.scatter(blob2_pos[0, 0, :], blob1_pos[1, 0, :], color='blue')
+plt.show()
+
+# def update(frame):
+#     #for c in ax.collections:
+#     #    c.remove()
+#     #ax.pcolormesh(blob1_pos[0, frame, :], blob1_pos[1, frame, :], blob1_pos[frame], 100, cmap=plt.cm.Reds)
+#     blobs_plot.set_offsets(blob1_pos[:, frame, :])
+#
+#     return blobs_plot
+#
+#
+# blobs_movie = animation.FuncAnimation(fig=fig, func=update, frames=len(blob1_pos[0, :, 0]), interval=200)
+#
+# # save video
+# f = r"plots/blobs_test.mp4"
+# writervideo = animation.FFMpegWriter(fps=60)
+# blobs_movie.save(f, writer=writervideo)
 
 
 

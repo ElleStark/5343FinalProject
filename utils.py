@@ -1,4 +1,12 @@
 
+# Particle binning function in 2D
+# copied from https://stackoverflow.com/questions/61325586/fast-way-to-bin-a-2d-array-in-python
+def bin2d(orig_array, bin_width):
+    m_bins = orig_array.shape[0]//bin_width
+    n_bins = orig_array.shape[1]//bin_width
+    return orig_array.reshape(m_bins, bin_width, n_bins, bin_width).sum(3).sum(1)
+
+
 # Below code for Runge Kutta calculations from Dr.Steve Brunton:
 # https://www.youtube.com/watch?v=LRF4dGP4xeo
 

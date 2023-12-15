@@ -11,6 +11,7 @@ from math import *
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from scipy.interpolate import RegularGridInterpolator
+import utils
 #import cv2
 
 
@@ -423,16 +424,17 @@ class FlowField:
         self.flow_map = fmap_dict
         self.trajectories = traj_dict
 
-    def track_particles_rw(self, np, ic_idx_1, ic_idx_2, dt, duration, D):
+    def track_particles_rw(self, n_particles, ic_idx_1, ic_idx_2, dt, duration, D):
         """
-        Uses Lagrangian particle tracking model with random walk diffusion
-        :param np: float, number of particles to track
+        Uses Lagrangian particle tracking model with random walk diffusion to calculate particle positions over time
+        for two 'blobs' of particles initialized at two different locations.
+        :param n_particles: float, number of particles to track
         :param ic_idx_1: list [x, y] of center of particle group 1 (will be colored red)
         :param ic_idx_2: list [x, y] of center of particle group 1 (will be colored blue)
         :param dt: float, length of timestep
         :param duration: float, total time to transport particles
         :param D: float, diffusion coefficient
-        :return:
+        :return: two nd arrays, each representing the positions over time for one 'blob' (set of particles)
         """
 
         L = abs(int(duration / dt))  # need to calculate if dt definition is not based on T
@@ -440,30 +442,38 @@ class FlowField:
         ny = len(self.y[:, 0])
 
         # Se up initial conditions for particles in both 'blobs'
-        blob1 = np.zeros((2, np))
+        blob1 = np.zeros((2, n_particles))
         blob1[0, :] = ic_idx_1[0]
         blob1[1, :] = ic_idx_1[1]
-        blob2 = np.zeros((2, np))
+        blob2 = np.zeros((2, n_particles))
         blob2[0, :] = ic_idx_2[0]
         blob2[1, :] = ic_idx_2[1]
 
         # at each timestep, advect particles and add diffusion with random walk
-        blob1_single_steps = np.zeros((2, L, np))
-        blob2_single_steps = np.zeros((2, L, np))
-        for step in range(L):
-            tstep = step * dt + tau
+        blob1_single_steps = np.zeros((2, L, n_particles))
+        blob2_single_steps = np.zeros((2, L, n_particles))
+        # Bin particles to also calculate concentration across grid at each step
+        blob1_conc_steps = np.zeros((2, L, nx*ny))
+        blob2_conc_steps = np.zeros((2, L, nx*ny))
 
-            # Blob 1 (red blob)
-            blob1_out = (self.improvedEuler_singlestep(dt, tstep, blob1) + np.sqrt(2 * D * dt) *
-                         np.random.randn(np.shape(blob1)))
+        for step in range(L):
+            tstep = step * dt
+
+            # Blob 1 (red blob) - particle positions
+            blob1_out = self.improvedEuler_singlestep(dt, tstep, blob1) + sqrt(2 * D * dt) * np.random.randn(*blob1.shape)
             blob1 = blob1_out
             blob1_single_steps[:, step, :] = blob1_out
+            # Blob 1 concentrations
 
-            # Blob 1 (blue blob)
-            blob2_out = (self.improvedEuler_singlestep(dt, tstep, blob2) + np.sqrt(2 * D * dt) *
-                         np.random.randn(np.shape(blob2)))
+
+            # Blob 2 (blue blob)
+            blob2_out = self.improvedEuler_singlestep(dt, tstep, blob2) + sqrt(2 * D * dt) * np.random.randn(*blob2.shape)
             blob2 = blob2_out
             blob2_single_steps[:, step, :] = blob2_out
+
+        self.trajs_w_diff = [blob1_single_steps, blob2_single_steps]
+
+        return blob1_single_steps, blob2_single_steps
 
 class DoubleGyre(FlowField):
 
