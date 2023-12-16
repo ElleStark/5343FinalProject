@@ -438,8 +438,10 @@ class FlowField:
         """
 
         L = abs(int(duration / dt))  # need to calculate if dt definition is not based on T
-        nx = len(self.x[0, :])
-        ny = len(self.y[:, 0])
+        #nx = len(self.x[0, :])
+        #ny = len(self.y[:, 0])
+        nx = 100
+        ny = 50
 
         # Se up initial conditions for particles in both 'blobs'
         blob1 = np.zeros((2, n_particles))
@@ -453,8 +455,8 @@ class FlowField:
         blob1_single_steps = np.zeros((2, L, n_particles))
         blob2_single_steps = np.zeros((2, L, n_particles))
         # Bin particles to also calculate concentration across grid at each step
-        blob1_conc_steps = np.zeros((2, L, nx*ny))
-        blob2_conc_steps = np.zeros((2, L, nx*ny))
+        blob1_conc_steps = np.zeros((L, ny, nx))
+        blob2_conc_steps = np.zeros((L, ny, nx))
 
         for step in range(L):
             tstep = step * dt
@@ -463,8 +465,10 @@ class FlowField:
             blob1_out = self.improvedEuler_singlestep(dt, tstep, blob1) + sqrt(2 * D * dt) * np.random.randn(*blob1.shape)
             blob1 = blob1_out
             blob1_single_steps[:, step, :] = blob1_out
-            # Blob 1 concentrations
-
+            # Blob 1 concentrations - use numpy's built-in histogram function
+            conc1, xbins1, ybins1 = np.histogram2d(blob1_out[0, :], blob1_out[1, :],
+                                                   bins=(np.linspace(0, 1, ny+1), np.linspace(0, 2, nx+1)))
+            blob1_conc_steps[step, :, :] = conc1
 
             # Blob 2 (blue blob)
             blob2_out = self.improvedEuler_singlestep(dt, tstep, blob2) + sqrt(2 * D * dt) * np.random.randn(*blob2.shape)
@@ -473,7 +477,7 @@ class FlowField:
 
         self.trajs_w_diff = [blob1_single_steps, blob2_single_steps]
 
-        return blob1_single_steps, blob2_single_steps
+        return blob1_single_steps, blob2_single_steps, blob1_conc_steps
 
 class DoubleGyre(FlowField):
 

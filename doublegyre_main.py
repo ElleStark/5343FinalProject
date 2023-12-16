@@ -73,7 +73,7 @@ D = 10 ** (-5)
 blob1_ctr = [1.6, 0.5]  # red dye
 blob2_ctr = [0.5, 0.5]  # blue dye
 
-blob1_pos, blob2_pos = DoubleGyre.track_particles_rw(num_particles, blob1_ctr, blob2_ctr, dt, 4 * T_0, D)
+blob1_pos, blob2_pos, blob1_conc = DoubleGyre.track_particles_rw(num_particles, blob1_ctr, blob2_ctr, dt, 4 * T_0, D)
 
 # Create movies of particle tracking and FTLEs
 plt.close('all')
@@ -83,10 +83,9 @@ ax.set(xlim=(0, 2), ylim=(0, 1))
 ax.set_aspect('equal', adjustable='box')
 
 # QC: plot first snapshot
-# blobs_plot = ax.pcolormesh(blob1_pos[0, 0, :], blob1_pos[1, 0, :], blob1_pos[0], cmap=plt.cm.Reds)
-# blobs_plot = ax.scatter(blob1_pos[:, 0, :])
-ax.scatter(blob1_pos[0, 0, :], blob1_pos[1, 0, :], color='red')
-ax.scatter(blob2_pos[0, 0, :], blob1_pos[1, 0, :], color='blue')
+ax.pcolormesh(blob1_conc[:, 2, :], cmap=plt.cm.Reds)
+#ax.scatter(blob1_pos[0, 0, :], blob1_pos[1, 0, :], color='red')
+#ax.scatter(blob2_pos[0, 0, :], blob1_pos[1, 0, :], color='blue')
 plt.show()
 
 # def update(frame):
