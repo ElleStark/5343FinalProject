@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 from matplotlib import colors
 import time
 import utils
-
+import scipy.io
 
 
 # Constants for double gyre:
@@ -98,9 +98,9 @@ blob1_pos = np.load('data/blob1_pos_3m_dt500.npy')
 blob2_pos = np.load('data/blob2_pos_3m_dt500.npy')
 
 # First 2D histogram
-blob1_ic, xbins1, ybins1 = np.histogram2d(blob1_pos[0, 875, :], blob1_pos[1, 875, :],
+blob1_ic, xbins1, ybins1 = np.histogram2d(blob1_pos[0, 0, :], blob1_pos[1, 0, :],
                                             bins=(np.linspace(0, 2, 1000), np.linspace(0, 1, 500)))
-blob2_ic, xbins2, ybins2 = np.histogram2d(blob2_pos[0, 875, :], blob2_pos[1, 875, :],
+blob2_ic, xbins2, ybins2 = np.histogram2d(blob2_pos[0, 0, :], blob2_pos[1, 0, :],
                                             bins=(np.linspace(0, 2, 1000), np.linspace(0, 1, 500)))
 
 # # QC Plot: Initial Conditions
@@ -118,7 +118,15 @@ blob2_data = (blob2_ic - np.min(blob2_ic)) / (np.max(blob2_ic) - np.min(blob2_ic
 # Convert particle count data to Red-Blue color data - scale of 0.5 chosen for aesthetics
 combined_data = utils.color_change_white(blob2_data, blob1_data, 0.5)
 rxn_data = np.multiply(blob2_ic, blob1_ic)
-rxn_data = (rxn_data - np.min(rxn_data)) / (np.max(rxn_data) - np.min(rxn_data))
+
+if np.max(rxn_data) > 0:
+    rxn_data = (rxn_data - np.min(rxn_data)) / (np.max(rxn_data) - np.min(rxn_data))
+    rxn_data = rxn_data ** (1 / 4)  # scale data for better plotting
+
+# Define reaction colormap
+rxn_colors = scipy.io.loadmat('data/rxn_cmap.mat')
+rxn_colors = rxn_colors['rxn_cmap']
+rxn_cmap = colors.ListedColormap(rxn_colors)
 
 # Create movies of particle tracking and FTLEs
 plt.close('all')
@@ -138,42 +146,56 @@ blobs_plot = ax1.imshow(np.zeros((len(xbins1), len(ybins1), 3)), extent=[0, 2, 0
 blobs_plot.set_data(combined_data.transpose(1, 0, 2))
 
 # First snapshot - FTLE with reaction
-#rxn_plot = ax2.imshow(rxn_data.T, extent=[0, 2, 0, 1], origin='lower', alpha=0.7, cmap='Purples', norm=colors.LogNorm(), zorder=10)
-rxn_plot = ax2.pcolormesh(DoubleGyre.x[0, :-1], DoubleGyre.y[:-1, 0], rxn_data.T, cmap='Purples', norm=colors.LogNorm(),
-                          shading='gouraud', alpha=0.05)
-#ftle_plot = ax2.contourf(DoubleGyre.x, DoubleGyre.y, DoubleGyre.ftle[tau_list[875]], 100, extent=[0, 2, 0, 1], cmap=plt.cm.Greys, zorder=-1)
+rxn_plot = ax2.imshow(rxn_data.T, extent=[0, 2, 0, 1], alpha=0.55, origin='lower', cmap=rxn_cmap, zorder=1)
+ftle_plot = ax2.contourf(DoubleGyre.x, DoubleGyre.y, DoubleGyre.ftle[tau_list[0]], 100, extent=[0, 2, 0, 1],
+                         cmap=plt.cm.Greys, zorder=-1)
 
-plt.savefig('plots/pcolortest1.png', dpi=200)
+# # QC: Plot and save snapshot
+plt.savefig('plots/pcolortest_0.png', dpi=200)
 plt.show()
 
 
-# def update(frame):
+def update(frame):
+    # PARTICLE TRACKING PLOT (TOP POSITION)
+    # Obtain particle tracking data for this frame using 2D histogram
+    blob1_data, xbins1, ybins1 = np.histogram2d(blob1_pos[0, frame, :], blob1_pos[1, frame, :],
+                                            bins=(np.linspace(0, 2, 1000), np.linspace(0, 1, 500)))
+    blob2_data, xbins2, ybins2 = np.histogram2d(blob2_pos[0, frame, :], blob2_pos[1, frame, :],
+                                            bins=(np.linspace(0, 2, 1000), np.linspace(0, 1, 500)))
+    # Normalize 0 to 1 for input to color mapping
+    blob1_data = (blob1_data - np.min(blob1_data)) / (np.max(blob1_data) - np.min(blob1_data))
+    blob2_data = (blob2_data - np.min(blob2_data)) / (np.max(blob2_data) - np.min(blob2_data))
+    # Convert particle count data to Red-Blue color data - scale of 0.5 chosen for aesthetics
+    combined_data = utils.color_change_white(blob2_data, blob1_data, 0.5)
+    blobs_plot.set_array(combined_data.transpose(1, 0, 2))
 
-#     # PARTICLE TRACKING PLOT (TOP POSITION)
-#     # Obtain particle tracking data for this frame using 2D histogram
-#     blob1_data, xbins1, ybins1 = np.histogram2d(blob1_pos[0, frame, :], blob1_pos[1, frame, :],
-#                                             bins=(np.linspace(0, 2, 1000), np.linspace(0, 1, 500)))
-#     blob2_data, xbins2, ybins2 = np.histogram2d(blob2_pos[0, frame, :], blob2_pos[1, frame, :],
-#                                             bins=(np.linspace(0, 2, 1000), np.linspace(0, 1, 500)))
-#     # Normalize 0 to 1 for input to color mapping
-#     blob1_data = (blob1_data - np.min(blob1_data)) / (np.max(blob1_data) - np.min(blob1_data))
-#     blob2_data = (blob2_data - np.min(blob2_data)) / (np.max(blob2_data) - np.min(blob2_data))
-#     # Convert particle count data to Red-Blue color data - scale of 0.5 chosen for aesthetics
-#     combined_data = utils.color_change_white(blob2_data, blob1_data, 0.5)
-#     blobs_plot.set_array(combined_data.transpose(1, 0, 2))
-#
-#     # FTLE PLOT (BOTTOM POSITION)
-#     ftle_plot.set_array(ftle_list[frame].ravel())
-#
-#     return blobs_plot, ftle_plot
-#
-#
-# doublegyre_movie = animation.FuncAnimation(fig=fig, func=update, frames=len(blob1_pos[0, :, 0]), interval=200)
-#
-# # save video
-# f = r"plots/dg_twoplots.mp4"
-# writervideo = animation.FFMpegWriter(fps=60)
-# blobs_movie.save(f, writer=writervideo)
+    # FTLE PLOT (BOTTOM POSITION)
+
+    # Remove previous FTLE contours to update contourf correctly
+    for c in ax2.collections:
+        c.remove()
+    ftle_plot = ax2.contourf(DoubleGyre.x, DoubleGyre.y, DoubleGyre.ftle[tau_list[frame]], 100, extent=[0, 2, 0, 1],
+                         cmap=plt.cm.Greys, zorder=-1)
+
+    # Had to also remove previous images to avoid overlay issues with imshow
+    for img in ax2.images:
+        img.remove()
+    rxn_data = np.multiply(blob2_data, blob1_data)
+    if np.max(rxn_data) > 0:
+        rxn_data = (rxn_data - np.min(rxn_data)) / (np.max(rxn_data) - np.min(rxn_data))
+        rxn_data = rxn_data ** (1 / 4)  # scale data for better plotting
+
+    rxn_plot = ax2.imshow(rxn_data.T, extent=[0, 2, 0, 1], alpha=0.55, origin='lower', cmap=rxn_cmap, zorder=1)
+
+    return blobs_plot, *ftle_plot.collections, rxn_plot
+
+
+doublegyre_movie = animation.FuncAnimation(fig=fig, func=update, frames=len(blob1_pos[0, :, 0]), interval=200)
+
+# save video
+f = r"plots/doublegyre_final.mp4"
+writervideo = animation.FFMpegWriter(fps=60)
+doublegyre_movie.save(f, writer=writervideo, dpi=200)
 
 
 
