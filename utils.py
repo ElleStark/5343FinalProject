@@ -10,7 +10,7 @@ def bin2d(orig_array, bin_width):
 
 
 # Color map function below shared by Lars Larson
-def color_change_white(img1, img2, scale=1.0, type='conc'):
+def color_change_white(img1, img2, scale=1.0):
     img1 = img1 ** scale
     img2 = img2 ** scale
     img1[img1 > 1] = 1
@@ -24,12 +24,8 @@ def color_change_white(img1, img2, scale=1.0, type='conc'):
     # Blue
     comb_img[:, :, 2] = 1 - img2
     # Green
-    if type == 'conc':
-        comb_img[:, :, 1] = 1 - (img1 + img2)
-    elif type == 'rxn':
-        comb_img[:, :, 1] = 1 - (img1 * img2)
-    else:
-        print('invalid type - options are conc or rxn.')
+    comb_img[:, :, 1] = 1 - (img1 + img2)
+
     comb_img[:, :, 1] = np.clip(comb_img[:, :, 1], 0, 1)  # Clip the green channel
 
     comb_img = np.real(comb_img)

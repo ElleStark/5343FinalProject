@@ -140,7 +140,11 @@ class FlowField:
         # Initialize dictionary for FTLE fields
         ftle_dict = {}
 
+        counter = 0
+
         for (time, fmap) in self.flow_map.items():
+            counter += 1
+
             # Initialize arrays for jacobian approximation and ftle
             jacobian = np.empty([2, 2], float)
             ftle = np.zeros([grid_height, grid_width], float)
@@ -168,6 +172,9 @@ class FlowField:
                     ftle[j][i] = 1 / (abs(self.integration_time)) * log(sqrt(max_eig))
 
             ftle_dict[time] = ftle
+
+            pct_done = counter / len(self.flow_map)
+            print(f'FTLE computations {pct_done}% complete')
 
         self.ftle = ftle_dict
 
@@ -349,9 +356,12 @@ class FlowField:
         yIC = np.zeros((2, nx * ny))
         yIC[0, :] = x0.reshape(nx * ny)
         yIC[1, :] = y0.reshape(nx * ny)
+        counter = 0
 
         # Compute Trajectories
         for tau in tau_list:
+            counter += 1
+
             yin = yIC
 
             for step in range(L):
@@ -363,6 +373,9 @@ class FlowField:
             fmap = yout
             fmap = np.squeeze(fmap)
             fmap_dict[tau] = fmap
+
+            pct_done = counter / len(tau_list)
+            print(f'flow map {pct_done}% complete')
 
         self.flow_map = fmap_dict
 

@@ -11,6 +11,7 @@ import numpy as np
 import flowfield
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
+from matplotlib import colors
 import time
 import utils
 
@@ -39,46 +40,52 @@ DoubleGyre = flowfield.DoubleGyre(a, eps, T_0, n)
 
 # Find flow map using Runge-Kutta 4th order method to integrate backwards from t = t0 to t = t0-T
 T = -2*T_0  # integration time - Pratt et al. used 2-2.5 turnover times
-tau_list = np.linspace(0, T_0, 100)  # evolution times
-#start_time = time.time()
-#DoubleGyre.compute_flow_map(T, tau_list, dt=T/50, method='IE')
-#print('time to compute trajectories is: ' + str(time.time()-start_time))
+tau_list = np.linspace(0, 4*T_0, 1000)  # evolution times
+#tau_list = [3.5*T_0]
+dt = T/500
+start_time = time.time()
+DoubleGyre.compute_flow_map(T, tau_list, dt=T/50, method='IE')
+print('time to compute trajectories is: ' + str(time.time()-start_time))
 
 # If only interested in one or a few points in time, can use method 'compute_flow_map_w_trajs' and plot trajectories
 # tau_list = [0]
-# DoubleGyre.compute_flow_map_w_trajs(T, tau_list, dt=T/50, method='RK4')
+# DoubleGyre.compute_flow_map_w_trajs(T, tau_list, dt=dt, method='RK4')
 # DoubleGyre.plot_trajectories([0, 2], [0, 1])
 
 # Compute FTLE using central differencing for strain tensor
-#start_time = time.time()
-#DoubleGyre.compute_ftle()
-#print('time to compute FTLE is: ' + str(time.time()-start_time))
+start_time = time.time()
+DoubleGyre.compute_ftle()
+print('time to compute FTLE is: ' + str(time.time()-start_time))
+
+# Save FTLE field for all times
+np.save('data/dg_ftle_4T0_n1000_1000step', DoubleGyre.ftle)
 
 # Create movie of FTLE field, passing in xlim and ylim for plotting. Saves ftle.mp4 in \plots\ folder.
 #DoubleGyre.ftle_movie((0, 2), (0, 1))
 
 # Plot FTLE field at a single point in time. Saves ftle_snap.png in \plots\ folder.
-# DoubleGyre.ftle_snapshot(tau_list[0])
+#DoubleGyre.ftle_snapshot(tau_list[0], name='5343test')
 
 # Save individual FTLE field data if desired
 # np.savetxt('data/doublegyre_negftle_t2.5T_T2T0_pratt.txt', DoubleGyre.ftle[tau_list[1]])
 
 
 # PARTICLE TRACKING MODEL & MOVIE
-starttime = time.time()
 num_particles = 3000000  # number of particles initialized in each location
 M = 1 / num_particles  # total mass = 1, so tag each particle with a mass of 1/#particles
-dt = -T/500
+dt = abs(dt)
 D = 10 ** (-6)
 batchelor_length = 0.1  # for setting up size of square for initial conditions
 blob1_ctr = [1.6, 0.5]  # red dye
 blob2_ctr = [0.5, 0.5]  # blue dye
 
-#blob1_pos, blob2_pos = DoubleGyre.track_particles_rw(num_particles, blob1_ctr, blob2_ctr, dt,
-#                                                     4 * T_0, D, batchelor_length)
-
-#np.save('data/blob1_pos_4_5m', blob1_pos)
-#np.save('data/blob2_pos_4_5m', blob2_pos)
+# Function call to create and save particle tracking model
+starttime = time.time()
+blob1_pos, blob2_pos = DoubleGyre.track_particles_rw(num_particles, blob1_ctr, blob2_ctr, dt,
+                                                    4 * T_0, D, batchelor_length)
+np.save('data/blob1_pos_3m_dt500', blob1_pos)
+np.save('data/blob2_pos_3m_dt500', blob2_pos)
+print('time to compute particle tracking is: ' + str(time.time()-starttime))
 
 # # QC: scatterplot first snapshot
 # #ax.pcolormesh(blob1_conc[0, :, :], cmap=plt.cm.Reds)
@@ -86,22 +93,15 @@ blob2_ctr = [0.5, 0.5]  # blue dye
 # blob2_plot = ax.scatter(blob2_pos[0, 0, :], blob2_pos[1, 0, :], color='blue')
 # plt.show()
 
-blob1_pos = np.load('data/blob1_pos_4_5m.npy')
-blob2_pos = np.load('data/blob2_pos_4_5m.npy')
+# Load particle tracking data if already computed and saved
+blob1_pos = np.load('data/blob1_pos_3m_dt500.npy')
+blob2_pos = np.load('data/blob2_pos_3m_dt500.npy')
 
 # First 2D histogram
-blob1_ic, xbins1, ybins1 = np.histogram2d(blob1_pos[0, 0, :], blob1_pos[1, 0, :],
+blob1_ic, xbins1, ybins1 = np.histogram2d(blob1_pos[0, 875, :], blob1_pos[1, 875, :],
                                             bins=(np.linspace(0, 2, 1000), np.linspace(0, 1, 500)))
-blob2_ic, xbins2, ybins2 = np.histogram2d(blob2_pos[0, 0, :], blob2_pos[1, 0, :],
+blob2_ic, xbins2, ybins2 = np.histogram2d(blob2_pos[0, 875, :], blob2_pos[1, 875, :],
                                             bins=(np.linspace(0, 2, 1000), np.linspace(0, 1, 500)))
-
-# QC Plot: 2D histogram at given timestep
-blob1_data, xbins1, ybins1 = np.histogram2d(blob1_pos[0, 625, :], blob1_pos[1, 625, :],
-                                            bins=(np.linspace(0, 2, 1000), np.linspace(0, 1, 500)))
-blob2_data, xbins2, ybins2 = np.histogram2d(blob2_pos[0, 625, :], blob2_pos[1, 625, :],
-                                            bins=(np.linspace(0, 2, 1000), np.linspace(0, 1, 500)))
-#blob1_plot = plt.pcolormesh(xbins1, ybins1, blob1_data.T, cmap='Reds')
-#blob2_plot = plt.pcolormesh(xbins2, ybins2, blob2_data.T, cmap='Blues')
 
 # # QC Plot: Initial Conditions
 # blob1_ic = (blob1_ic - np.min(blob1_ic)) / (np.max(blob1_ic) - np.min(blob1_ic))
@@ -111,18 +111,18 @@ blob2_data, xbins2, ybins2 = np.histogram2d(blob2_pos[0, 625, :], blob2_pos[1, 6
 # plt.show()
 # plt.close()
 
-# Normalized data
-blob1_data = (blob1_data - np.min(blob1_data)) / (np.max(blob1_data) - np.min(blob1_data))
-blob2_data = (blob2_data - np.min(blob2_data)) / (np.max(blob2_data) - np.min(blob2_data))
-#blob1_data = blob1_data * M / (1/500)**2
-#blob2_data = blob2_data * M / (1/500)**2
+# Normalized data for initial conditions
+blob1_data = (blob1_ic - np.min(blob1_ic)) / (np.max(blob1_ic) - np.min(blob1_ic))
+blob2_data = (blob2_ic - np.min(blob2_ic)) / (np.max(blob2_ic) - np.min(blob2_ic))
 
-# Convert particle count data to Red-Blue color data
+# Convert particle count data to Red-Blue color data - scale of 0.5 chosen for aesthetics
 combined_data = utils.color_change_white(blob2_data, blob1_data, 0.5)
+rxn_data = np.multiply(blob2_ic, blob1_ic)
+rxn_data = (rxn_data - np.min(rxn_data)) / (np.max(rxn_data) - np.min(rxn_data))
 
 # Create movies of particle tracking and FTLEs
 plt.close('all')
-# create a figure with two subplots
+# create a figure with two subplots, top for particle tracking ('blobs_plot') and bottom for FTLE w/rxn ('ftle_plot')
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(4.2, 4.6))
 
 for ax in [ax1, ax2]:
@@ -134,26 +134,44 @@ for ax in [ax1, ax2]:
     ax.set_yticks([])
 
 # First snapshot - particle tracking
+blobs_plot = ax1.imshow(np.zeros((len(xbins1), len(ybins1), 3)), extent=[0, 2, 0, 1], origin='lower')
+blobs_plot.set_data(combined_data.transpose(1, 0, 2))
 
-ax1.pcolormesh(xbins1, ybins1, combined_data.transpose(1, 0, 2))
-print('time to compute particle tracking is: ' + str(time.time()-starttime))
 # First snapshot - FTLE with reaction
+#rxn_plot = ax2.imshow(rxn_data.T, extent=[0, 2, 0, 1], origin='lower', alpha=0.7, cmap='Purples', norm=colors.LogNorm(), zorder=10)
+rxn_plot = ax2.pcolormesh(DoubleGyre.x[0, :-1], DoubleGyre.y[:-1, 0], rxn_data.T, cmap='Purples', norm=colors.LogNorm(),
+                          shading='gouraud', alpha=0.05)
+#ftle_plot = ax2.contourf(DoubleGyre.x, DoubleGyre.y, DoubleGyre.ftle[tau_list[875]], 100, extent=[0, 2, 0, 1], cmap=plt.cm.Greys, zorder=-1)
 
+plt.savefig('plots/pcolortest1.png', dpi=200)
 plt.show()
+
 
 # def update(frame):
 
+#     # PARTICLE TRACKING PLOT (TOP POSITION)
+#     # Obtain particle tracking data for this frame using 2D histogram
+#     blob1_data, xbins1, ybins1 = np.histogram2d(blob1_pos[0, frame, :], blob1_pos[1, frame, :],
+#                                             bins=(np.linspace(0, 2, 1000), np.linspace(0, 1, 500)))
+#     blob2_data, xbins2, ybins2 = np.histogram2d(blob2_pos[0, frame, :], blob2_pos[1, frame, :],
+#                                             bins=(np.linspace(0, 2, 1000), np.linspace(0, 1, 500)))
+#     # Normalize 0 to 1 for input to color mapping
+#     blob1_data = (blob1_data - np.min(blob1_data)) / (np.max(blob1_data) - np.min(blob1_data))
+#     blob2_data = (blob2_data - np.min(blob2_data)) / (np.max(blob2_data) - np.min(blob2_data))
+#     # Convert particle count data to Red-Blue color data - scale of 0.5 chosen for aesthetics
+#     combined_data = utils.color_change_white(blob2_data, blob1_data, 0.5)
 #     blobs_plot.set_array(combined_data.transpose(1, 0, 2))
 #
+#     # FTLE PLOT (BOTTOM POSITION)
 #     ftle_plot.set_array(ftle_list[frame].ravel())
 #
-#     return blob1_plot, blob2_plot,
+#     return blobs_plot, ftle_plot
 #
 #
-# blobs_movie = animation.FuncAnimation(fig=fig, func=update, frames=len(blob1_pos[0, :, 0]), interval=200)
+# doublegyre_movie = animation.FuncAnimation(fig=fig, func=update, frames=len(blob1_pos[0, :, 0]), interval=200)
 #
 # # save video
-# f = r"plots/twoblobs_test.mp4"
+# f = r"plots/dg_twoplots.mp4"
 # writervideo = animation.FFMpegWriter(fps=60)
 # blobs_movie.save(f, writer=writervideo)
 
