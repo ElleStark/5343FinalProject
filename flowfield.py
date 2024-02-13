@@ -221,7 +221,7 @@ class FlowField:
         if type == 'FTLE':
             # Get desired FTLE snapshot data
             ftle = self.ftle[time]
-            plt.contourf(self.x, self.y, ftle, 100, cmap=plt.cm.Greys)
+            plt.contourf(self.x, self.y, ftle, 100, cmap=plt.cm.Greys, vmin=0)
             plt.title('FTLE')
             plt.colorbar()
         if type == 'FSLE':

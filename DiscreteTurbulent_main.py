@@ -117,7 +117,7 @@ turb_lcs = flowfield.DiscreteFlow(xmesh_ftle, ymesh_ftle, u_data, v_data, xmesh_
 
 # FTLE integration parameters
 ftle_dt = -dt_data  # negative for backward-time FTLE
-integration_time = -.2  # integration time in seconds
+integration_time = -.6  # integration time in seconds
 
 # Adjust start and end times for calculating FTLE so that enough data is available to integrate
 if min_frame is None:
@@ -143,7 +143,7 @@ if integration_time > 0:
 
 # For testing, just use a snapshot:
 #tau_list = [(end_time-start_time/2)]
-start_time = min_frame * dt_data - (-2)
+start_time = min_frame * dt_data
 tau_list = [start_time]
 
 # Compute flow map over integration time (and time calculations) - use w_trajs version for FSLE
@@ -164,7 +164,8 @@ print('time to compute FTLE is: ' + str(time.time()-start_timer))
 # turb_lcs.ftle_movie((min(xvec_ftle), max(xvec_ftle)), (min(yvec_ftle), max(yvec_ftle)))
 
 # For testing, plot snapshot figures:
-turb_lcs.ftle_snapshot(tau_list[0], name='t0_backwardT0_2_spacing0_00025_start2', odor=None, type='FTLE')
+turb_lcs.ftle_snapshot(tau_list[0], name=f'backwardT{integration_time}_spacing{particle_spacing}_start{start_time}',
+                       odor=None, type='FTLE')
 #turb_lcs.plot_lyptime(tau_list[0], name='t0_r5')
 #turb_lcs.ftle_snapshot(tau_list[1], name='t2_5', odor=[odor_a, odor_b])
 #turb_lcs.ftle_snapshot(tau_list[2], name='t5', odor=[odor_a, odor_b])
