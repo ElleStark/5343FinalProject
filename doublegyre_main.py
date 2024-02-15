@@ -151,7 +151,7 @@ ftle_plot = ax2.contourf(DoubleGyre.x, DoubleGyre.y, DoubleGyre.ftle[tau_list[0]
                          cmap=plt.cm.Greys, zorder=-1)
 
 # # QC: Plot and save snapshot
-plt.savefig('plots/pcolortest_0.png', dpi=200)
+plt.savefig('plots/plot750.png', dpi=200)
 plt.show()
 
 

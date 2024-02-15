@@ -137,8 +137,9 @@ class FlowField:
         delta_x = self.x[0][1] - self.x[0][0]  # Even spacing, so just take difference at any index
         delta_y = self.y[1][0] - self.y[0][0]
 
-        # Initialize dictionary for FTLE fields
+        # Initialize dictionary for FTLE & LCS fields
         ftle_dict = {}
+        lcs_dict = {}
 
         counter = 0
 
@@ -148,6 +149,12 @@ class FlowField:
             # Initialize arrays for jacobian approximation and ftle
             jacobian = np.empty([2, 2], float)
             ftle = np.zeros([grid_height, grid_width], float)
+            eig1 = np.zeros([grid_height, grid_width], float)
+            eig2 = np.zeros([grid_height, grid_width], float)
+            # eigenvectors associated to maximum eigenvalues of CG-tensor
+            e1 = np.zeros((eig1.shape[0], eig1.shape[1], 2)) * np.nan  # array (Ny, Nx, 2)
+            # eigenvectors associated to minimum eigenvalues of CG-tensor
+            e2 = np.zeros((eig2.shape[0], eig2.shape[1], 2)) * np.nan  # array (Ny, Nx, 2)
 
             # Use flow map to assign x and y final positions
             x_final = fmap[0]
@@ -166,17 +173,50 @@ class FlowField:
 
                     # Cauchy-Green tensor
                     gc_tensor = np.dot(np.transpose(jacobian), jacobian)
-                    # its largest eigenvalue
-                    lamda = LA.eigvals(gc_tensor)
-                    max_eig = max(lamda)
-                    ftle[j][i] = 1 / (abs(self.integration_time)) * log(sqrt(max_eig))
 
+                    # compute eigenvalues and eigenvectors of CG tensor
+                    eig1[i, j], eig2[i, j], e1[i, j, :], e2[i, j, :] = utils.eigen(gc_tensor)
+
+                    # its largest eigenvalue
+                    # lamda = LA.eig(gc_tensor)
+                    # max_eig = max(lamda)
+
+                    # Compute FTLE at each location
+                    ftle[j][i] = 1 / (abs(self.integration_time)) * log(sqrt(eig1))
+
+            # Step-size used for integration
+            step_size = 0.02  # float
+
+            # threshold distance to locate local maxima in the 'eig2'
+            min_distance = 0.01  # float
+
+            # Maximum length of stretchline
+            max_length = 0.5  # float
+
+            # Number of most relevant tensorlines. If you want all possible tensorlines, then set n_tensorlines = -1
+            n_tensorlines = 100  # int
+
+            # Minimum threshold on rate of attraction of stretchline
+            hyperbolicity = 0
+
+            # Maximum threshold on number of iterations
+            n_iterations = 10 ** 3
+
+            # Compute attracting LCS as tensorlines tangent to eigenvectors of CG tensor.
+            # For backward integration, use
+            lcs_lines = utils._tensorlines_incompressible(self.x, self.y, eig2, e1, min_distance, max_length,
+                                                      step_size, n_tensorlines, hyperbolicity, n_iterations,
+                                                      verbose=True)  # list containing stretchlines
+
+            # Store FTLE field at each timestep
             ftle_dict[time] = ftle
+            lcs_dict[time] = lcs_lines
 
             pct_done = counter / len(self.flow_map)
-            print(f'FTLE computations {pct_done}% complete')
+            print(f'FTLE & LCS computations {pct_done}% complete')
 
         self.ftle = ftle_dict
+        self.lcs_lines = lcs_dict
 
     def ftle_movie(self, xlim, ylim):
         """
@@ -213,7 +253,7 @@ class FlowField:
         writervideo = animation.FFMpegWriter(fps=60)
         ftle_movie.save(f, writer=writervideo)
 
-    def ftle_snapshot(self, time, name='1', odor=None, type='FTLE'):
+    def ftle_snapshot(self, time, name='1', odor=None, lcs=False, type='FTLE'):
 
         # Plot contour map of FTLE
         fig, ax = plt.subplots()
@@ -249,6 +289,10 @@ class FlowField:
             #              100, cmap=plt.cm.Blues, alpha=0.4)
             plt.pcolormesh(self.xmesh_uv, self.ymesh_uv, odor_a, cmap=plt.cm.Reds, alpha=0.5)
             plt.pcolormesh(self.xmesh_uv, self.ymesh_uv, odor_b, cmap=plt.cm.Blues, alpha=0.5)
+
+        if lcs:
+            for i in range(len(self.lcs_lines[time][0])):
+                ax.plot(self.lcs_lines[time][0][i], self.lcs_lines[time][1][i], c='r', linewidth=1, linestyle="dashed")
 
         # Save figure
         plt.savefig('plots/{type}_snap_{name}.png'.format(type=type, name=name))

@@ -164,8 +164,8 @@ print('time to compute FTLE is: ' + str(time.time()-start_timer))
 # turb_lcs.ftle_movie((min(xvec_ftle), max(xvec_ftle)), (min(yvec_ftle), max(yvec_ftle)))
 
 # For testing, plot snapshot figures:
-turb_lcs.ftle_snapshot(tau_list[0], name=f'backwardT{integration_time}_spacing{particle_spacing}_start{start_time}',
-                       odor=None, type='FTLE')
+turb_lcs.ftle_snapshot(tau_list[0], name=f'lcstest_backwardT{integration_time}_spacing{particle_spacing}_start{start_time}',
+                       odor=None, lcs=True, type='FTLE')
 #turb_lcs.plot_lyptime(tau_list[0], name='t0_r5')
 #turb_lcs.ftle_snapshot(tau_list[1], name='t2_5', odor=[odor_a, odor_b])
 #turb_lcs.ftle_snapshot(tau_list[2], name='t5', odor=[odor_a, odor_b])
