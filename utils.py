@@ -141,7 +141,7 @@ def _find_reduced_set_of_local_maxima(min_distance, X, Y, Field, loc_threshold):
 
         for j in range(n_loc_max):
 
-            if i != j and loc_max_field[i] < loc_max_field[j] and sqrt(
+            if i != j and loc_max_field[i] < loc_max_field[j] and np.sqrt(
                     (loc_max_x[i] - loc_max_x[j]) ** 2 + (loc_max_y[i] - loc_max_y[j]) ** 2) <= min_distance:
                 bool_loc_max = False
 
@@ -462,7 +462,7 @@ def _RK4_tensorlines_incompressible(X, Y, defined_domain, x, x_prime, step_size,
     return x_update, x_prime_update
 
 
-def _tensorlines_incompressible(X, Y, eig, vector_field, min_distance, max_length, step_size, n_tensorlines=-1,
+def tensorlines_incompressible(X, Y, eig, vector_field, min_distance, max_length, step_size, n_tensorlines=-1,
                                 hyperbolicity=0, n_iterations=10 ** 4, verbose=False):
     '''
     Wrapper for RK4_tensorlines_incompressible(). Integrates the tensorlines given an eigenvector/eigenvalue field. The integration stops
@@ -501,6 +501,7 @@ def _tensorlines_incompressible(X, Y, eig, vector_field, min_distance, max_lengt
     eig = np.nan_to_num(eig, 0)
 
     # Interpolate Eigenvalue field
+    # Y = np.flipud(Y)  # values must be strictly increasing for RBS
     interp_eig = RBS(Y[:, 0], X[0, :], eig, kx=1, ky=1)
 
     # Define list of tensorlines (back/forward)

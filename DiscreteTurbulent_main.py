@@ -16,12 +16,12 @@ import math
 
 # Subset in time: SET TO None IF ALL TIMES DESIRED!
 min_frame = 0
-max_frame = 250  # 250 frames is 5 seconds of data for 50Hz resolution
+max_frame = 500  # 250 frames is 5 seconds of data for 50Hz resolution
 # Subset in Space: SET TO None if ENTIRE DOMAIN DESIRED!
-min_x_index = None
-max_x_index = None  # 201 steps is 0.1 m for dx=0.005
-min_y_index = None  # 423 is approx index of the center of multisource plume data
-max_y_index = None
+min_x_index = 200
+max_x_index = 800  # 201 steps is 0.1 m for dx=0.005
+min_y_index = 223  # 423 is approx index of the center of multisource plume data
+max_y_index = 623
 
 # Read in all needed data from hdf5 files. For more info on hdf5 format, see https://www.hdfgroup.org/.
 # Use 'with' context manager to make sure h5 file is closed properly after using.
@@ -82,9 +82,10 @@ particle_spacing = spatial_res / 2  # can determine visually if dx is appropriat
 # particle_spacing = 0.002
 
 # x and y vectors based on velocity mesh limits and particle spacing
-xvec_ftle = np.linspace(xmesh_uv[0][0], xmesh_uv[0][-1], int(domain_length / particle_spacing + 1))
-yvec_ftle = np.linspace(ymesh_uv[0][0], ymesh_uv[-1][0], int(domain_width / particle_spacing + 1))
+xvec_ftle = np.linspace(xmesh_uv[0][0], xmesh_uv[0][-1], int(len(xmesh_uv[0, :]) / particle_spacing + 1))
+yvec_ftle = np.linspace(ymesh_uv[0][0], ymesh_uv[-1][0], int(ymesh_uv[:, 0] / particle_spacing + 1))
 xmesh_ftle, ymesh_ftle = np.meshgrid(xvec_ftle, yvec_ftle, indexing='xy')
+ymesh_ftle = np.flipud(ymesh_ftle)
 
 # QC plot: initial positions of Lagrangian tracers
 # fig, ax = plt.subplots()
@@ -117,7 +118,7 @@ turb_lcs = flowfield.DiscreteFlow(xmesh_ftle, ymesh_ftle, u_data, v_data, xmesh_
 
 # FTLE integration parameters
 ftle_dt = -dt_data  # negative for backward-time FTLE
-integration_time = -.6  # integration time in seconds
+integration_time = 0.6  # integration time in seconds
 
 # Adjust start and end times for calculating FTLE so that enough data is available to integrate
 if min_frame is None:
@@ -144,7 +145,8 @@ if integration_time > 0:
 # For testing, just use a snapshot:
 #tau_list = [(end_time-start_time/2)]
 start_time = min_frame * dt_data
-tau_list = [start_time]
+# tau_list = [start_time]
+tau_list = np.linspace(start_time, 10, int((10-start_time)/0.02)+1)
 
 # Compute flow map over integration time (and time calculations) - use w_trajs version for FSLE
 start_timer = time.time()
@@ -163,8 +165,18 @@ print('time to compute FTLE is: ' + str(time.time()-start_timer))
 # Create movie of FTLE field, passing in xlim and ylim for plotting. Saves ftle.mp4 in \plots\ folder.
 # turb_lcs.ftle_movie((min(xvec_ftle), max(xvec_ftle)), (min(yvec_ftle), max(yvec_ftle)))
 
+# Save LCS dictionary
+fname = (f'alcs_backwardT{integration_time}_spacing{particle_spacing}_0.6to10s_'
+         f'x{min_x_index}to{max_x_index}_y{min_y_index}to{max_y_index}.npz')
+np.savez(fname, **turb_lcs.lcs_lines)
+
+fname_ftle = (f'ftle_backwardT{integration_time}_spacing{particle_spacing}_0.6to10s_'
+         f'x{min_x_index}to{max_x_index}_y{min_y_index}to{max_y_index}.npz')
+np.savez(fname, **turb_lcs.ftle)
+
 # For testing, plot snapshot figures:
-turb_lcs.ftle_snapshot(tau_list[0], name=f'lcstest_backwardT{integration_time}_spacing{particle_spacing}_start{start_time}',
+turb_lcs.ftle_snapshot(tau_list[0], name=f'alcs_backwardT{integration_time}_spacing{particle_spacing}_start{start_time}'
+                                         f'_x{min_x_index}to{max_x_index}_y{min_y_index}to{max_y_index}',
                        odor=None, lcs=True, type='FTLE')
 #turb_lcs.plot_lyptime(tau_list[0], name='t0_r5')
 #turb_lcs.ftle_snapshot(tau_list[1], name='t2_5', odor=[odor_a, odor_b])

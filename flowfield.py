@@ -175,26 +175,26 @@ class FlowField:
                     gc_tensor = np.dot(np.transpose(jacobian), jacobian)
 
                     # compute eigenvalues and eigenvectors of CG tensor
-                    eig1[i, j], eig2[i, j], e1[i, j, :], e2[i, j, :] = utils.eigen(gc_tensor)
+                    eig1[j, i], eig2[j, i], e1[j, i, :], e2[j, i, :] = utils.eigen(gc_tensor)  # minval, maxval, vecs
 
                     # its largest eigenvalue
                     # lamda = LA.eig(gc_tensor)
                     # max_eig = max(lamda)
 
                     # Compute FTLE at each location
-                    ftle[j][i] = 1 / (abs(self.integration_time)) * log(sqrt(eig1))
+                    ftle[j][i] = 1 / (abs(self.integration_time)) * log(sqrt(abs(eig2[j, i])))
 
             # Step-size used for integration
-            step_size = 0.02  # float
+            step_size = 0.01  # float
 
             # threshold distance to locate local maxima in the 'eig2'
-            min_distance = 0.01  # float
+            min_distance = 0.015  # float
 
             # Maximum length of stretchline
-            max_length = 0.5  # float
+            max_length = 0.2  # float
 
             # Number of most relevant tensorlines. If you want all possible tensorlines, then set n_tensorlines = -1
-            n_tensorlines = 100  # int
+            n_tensorlines = 150  # int
 
             # Minimum threshold on rate of attraction of stretchline
             hyperbolicity = 0
@@ -203,14 +203,14 @@ class FlowField:
             n_iterations = 10 ** 3
 
             # Compute attracting LCS as tensorlines tangent to eigenvectors of CG tensor.
-            # For backward integration, use
-            lcs_lines = utils._tensorlines_incompressible(self.x, self.y, eig2, e1, min_distance, max_length,
-                                                      step_size, n_tensorlines, hyperbolicity, n_iterations,
-                                                      verbose=True)  # list containing stretchlines
+            lcs_lines = utils.tensorlines_incompressible(self.x, self.y, eig2, e1, min_distance, max_length,
+                                                     step_size, n_tensorlines, hyperbolicity, n_iterations,
+                                                     verbose=True)  # list containing stretchlines
+            # lcs_lines = None
 
             # Store FTLE field at each timestep
-            ftle_dict[time] = ftle
-            lcs_dict[time] = lcs_lines
+            ftle_dict[str(time)] = ftle
+            lcs_dict[str(time)] = lcs_lines
 
             pct_done = counter / len(self.flow_map)
             print(f'FTLE & LCS computations {pct_done}% complete')
@@ -260,7 +260,7 @@ class FlowField:
 
         if type == 'FTLE':
             # Get desired FTLE snapshot data
-            ftle = self.ftle[time]
+            ftle = self.ftle[str(time)]
             plt.contourf(self.x, self.y, ftle, 100, cmap=plt.cm.Greys, vmin=0)
             plt.title('FTLE')
             plt.colorbar()
@@ -292,7 +292,8 @@ class FlowField:
 
         if lcs:
             for i in range(len(self.lcs_lines[time][0])):
-                ax.plot(self.lcs_lines[time][0][i], self.lcs_lines[time][1][i], c='r', linewidth=1, linestyle="dashed")
+                ax.plot(self.lcs_lines[str(time)][0][i], self.lcs_lines[time][1][i], c='r',
+                        linewidth=0.5, linestyle="dashed")
 
         # Save figure
         plt.savefig('plots/{type}_snap_{name}.png'.format(type=type, name=name))
