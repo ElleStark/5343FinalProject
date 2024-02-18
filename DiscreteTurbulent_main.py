@@ -2,6 +2,7 @@
 Elle Stark October 2023
 Expand FTLE computation code to handle discrete velocity fields.
 """
+import pickle
 
 import h5py
 import time
@@ -16,7 +17,7 @@ import math
 
 # Subset in time: SET TO None IF ALL TIMES DESIRED!
 min_frame = 0
-max_frame = 500  # 250 frames is 5 seconds of data for 50Hz resolution
+max_frame = 201  # 250 frames is 5 seconds of data for 50Hz resolution
 # Subset in Space: SET TO None if ENTIRE DOMAIN DESIRED!
 min_x_index = 200
 max_x_index = 800  # 201 steps is 0.1 m for dx=0.005
@@ -82,8 +83,8 @@ particle_spacing = spatial_res / 2  # can determine visually if dx is appropriat
 # particle_spacing = 0.002
 
 # x and y vectors based on velocity mesh limits and particle spacing
-xvec_ftle = np.linspace(xmesh_uv[0][0], xmesh_uv[0][-1], int(len(xmesh_uv[0, :]) / particle_spacing + 1))
-yvec_ftle = np.linspace(ymesh_uv[0][0], ymesh_uv[-1][0], int(ymesh_uv[:, 0] / particle_spacing + 1))
+xvec_ftle = np.linspace(xmesh_uv[0][0], xmesh_uv[0][-1], int(np.shape(u_data)[1] * spatial_res/particle_spacing))
+yvec_ftle = np.linspace(ymesh_uv[0][0], ymesh_uv[-1][0], int(np.shape(u_data)[0] * spatial_res/particle_spacing))
 xmesh_ftle, ymesh_ftle = np.meshgrid(xvec_ftle, yvec_ftle, indexing='xy')
 ymesh_ftle = np.flipud(ymesh_ftle)
 
@@ -146,7 +147,7 @@ if integration_time > 0:
 #tau_list = [(end_time-start_time/2)]
 start_time = min_frame * dt_data
 # tau_list = [start_time]
-tau_list = np.linspace(start_time, 10, int((10-start_time)/0.02)+1)
+tau_list = np.linspace(start_time, 4, int((4-start_time)/0.02)+1)
 
 # Compute flow map over integration time (and time calculations) - use w_trajs version for FSLE
 start_timer = time.time()
@@ -165,19 +166,40 @@ print('time to compute FTLE is: ' + str(time.time()-start_timer))
 # Create movie of FTLE field, passing in xlim and ylim for plotting. Saves ftle.mp4 in \plots\ folder.
 # turb_lcs.ftle_movie((min(xvec_ftle), max(xvec_ftle)), (min(yvec_ftle), max(yvec_ftle)))
 
-# Save LCS dictionary
-fname = (f'alcs_backwardT{integration_time}_spacing{particle_spacing}_0.6to10s_'
-         f'x{min_x_index}to{max_x_index}_y{min_y_index}to{max_y_index}.npz')
-np.savez(fname, **turb_lcs.lcs_lines)
+# Save LCS & FTLE dictionaries using pickle
+start_timer = time.time()
+fname_lcs = (f'data/LCS_data/alcs_backwardT{integration_time}_spacing{particle_spacing}_0.6to10s_'
+         f'x{min_x_index}to{max_x_index}_y{min_y_index}to{max_y_index}.pickle')
+with open(fname_lcs, 'wb') as handle:
+    pickle.dump(turb_lcs.lcs_lines, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-fname_ftle = (f'ftle_backwardT{integration_time}_spacing{particle_spacing}_0.6to10s_'
-         f'x{min_x_index}to{max_x_index}_y{min_y_index}to{max_y_index}.npz')
-np.savez(fname, **turb_lcs.ftle)
+# fname_ftle = (f'data/LCS_data/ftle_backwardT{integration_time}_spacing{particle_spacing}_0.6to10s_'
+#          f'x{min_x_index}to{max_x_index}_y{min_y_index}to{max_y_index}')
+# fname_ftle = 'data/LCS_data/ftletest.pickle'
+# with open(fname_ftle, 'wb') as handle:
+#     pickle.dump(turb_lcs.ftle, handle, protocol=pickle.HIGHEST_PROTOCOL)
+print(f'time to save dictionaries: {time.time() - start_timer}')
+
+# for time in tau_list:
+#     fname1_lcs = (f'data/LCS_data/time{time}_alcs1_backwardT{integration_time}_spacing{particle_spacing}_0.6to10s_'
+#                  f'x{min_x_index}to{max_x_index}_y{min_y_index}to{max_y_index}.npy')
+#     fname2_lcs = (f'data/LCS_data/time{time}_alcs2_backwardT{integration_time}_spacing{particle_spacing}_0.6to10s_'
+#                  f'x{min_x_index}to{max_x_index}_y{min_y_index}to{max_y_index}.npy')
+#     np.save(fname1_lcs, turb_lcs.lcs_lines[str(time)][0][:])
+#     np.save(fname2_lcs, turb_lcs.lcs_lines[time][1][:])
+#
+#     fname_ftle = (f'data/LCS_data/ftle_backwardT{integration_time}_spacing{particle_spacing}_0.6to10s_'
+#                   f'x{min_x_index}to{max_x_index}_y{min_y_index}to{max_y_index}.npz')
+#     np.save(fname_ftle, turb_lcs.ftle[str(time)])
+
+    #
+    # for i in range(len(turb_lcs.lcs_lines[str(time)][0])):
+    #     np.save(turb_lcs.lcs_lines[str(time)][0][i], turb_lcs.lcs_lines[time][1][i])
 
 # For testing, plot snapshot figures:
-turb_lcs.ftle_snapshot(tau_list[0], name=f'alcs_backwardT{integration_time}_spacing{particle_spacing}_start{start_time}'
-                                         f'_x{min_x_index}to{max_x_index}_y{min_y_index}to{max_y_index}',
-                       odor=None, lcs=True, type='FTLE')
+# turb_lcs.ftle_snapshot(tau_list[0], name=f'alcs_backwardT{integration_time}_spacing{particle_spacing}_start{start_time}'
+#                                          f'_x{min_x_index}to{max_x_index}_y{min_y_index}to{max_y_index}',
+#                        odor=None, lcs=True, type='FTLE')
 #turb_lcs.plot_lyptime(tau_list[0], name='t0_r5')
 #turb_lcs.ftle_snapshot(tau_list[1], name='t2_5', odor=[odor_a, odor_b])
 #turb_lcs.ftle_snapshot(tau_list[2], name='t5', odor=[odor_a, odor_b])

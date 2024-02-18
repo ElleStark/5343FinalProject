@@ -205,7 +205,7 @@ class FlowField:
             # Compute attracting LCS as tensorlines tangent to eigenvectors of CG tensor.
             lcs_lines = utils.tensorlines_incompressible(self.x, self.y, eig2, e1, min_distance, max_length,
                                                      step_size, n_tensorlines, hyperbolicity, n_iterations,
-                                                     verbose=True)  # list containing stretchlines
+                                                     verbose=False)  # list containing stretchlines
             # lcs_lines = None
 
             # Store FTLE field at each timestep
@@ -261,7 +261,7 @@ class FlowField:
         if type == 'FTLE':
             # Get desired FTLE snapshot data
             ftle = self.ftle[str(time)]
-            plt.contourf(self.x, self.y, ftle, 100, cmap=plt.cm.Greys, vmin=0)
+            plt.contourf(self.x, self.y, ftle, 100, cmap=plt.cm.Greys, vmin=0, vmax=8)
             plt.title('FTLE')
             plt.colorbar()
         if type == 'FSLE':
@@ -291,8 +291,8 @@ class FlowField:
             plt.pcolormesh(self.xmesh_uv, self.ymesh_uv, odor_b, cmap=plt.cm.Blues, alpha=0.5)
 
         if lcs:
-            for i in range(len(self.lcs_lines[time][0])):
-                ax.plot(self.lcs_lines[str(time)][0][i], self.lcs_lines[time][1][i], c='r',
+            for i in range(len(self.lcs_lines[str(time)][0])):
+                ax.plot(self.lcs_lines[str(time)][0][i], self.lcs_lines[str(time)][1][i], c='r',
                         linewidth=0.5, linestyle="dashed")
 
         # Save figure
