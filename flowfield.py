@@ -125,7 +125,7 @@ class FlowField:
         self.lyptime = lyptime_dict
 
 
-    def compute_ftle(self):
+    def compute_ftle(self, lcs=False):
         """
         modified from https://github.com/jollybao/LCS/blob/master/src/FTLE.py
         Must run method 'compute_flow_map' before using this method.
@@ -184,29 +184,31 @@ class FlowField:
                     # Compute FTLE at each location
                     ftle[j][i] = 1 / (abs(self.integration_time)) * log(sqrt(abs(eig2[j, i])))
 
-            # Step-size used for integration
-            step_size = 0.01  # float
+            if lcs is True:
+                # Step-size used for integration
+                step_size = 0.01  # float
 
-            # threshold distance to locate local maxima in the 'eig2'
-            min_distance = 0.015  # float
+                # threshold distance to locate local maxima in the 'eig2'
+                min_distance = 0.015  # float
 
-            # Maximum length of stretchline
-            max_length = 0.2  # float
+                # Maximum length of stretchline
+                max_length = 0.2  # float
 
-            # Number of most relevant tensorlines. If you want all possible tensorlines, then set n_tensorlines = -1
-            n_tensorlines = 150  # int
+                # Number of most relevant tensorlines. If you want all possible tensorlines, then set n_tensorlines = -1
+                n_tensorlines = 150  # int
 
-            # Minimum threshold on rate of attraction of stretchline
-            hyperbolicity = 0
+                # Minimum threshold on rate of attraction of stretchline
+                hyperbolicity = 0
 
-            # Maximum threshold on number of iterations
-            n_iterations = 10 ** 3
+                # Maximum threshold on number of iterations
+                n_iterations = 10 ** 3
 
-            # Compute attracting LCS as tensorlines tangent to eigenvectors of CG tensor.
-            lcs_lines = utils.tensorlines_incompressible(self.x, self.y, eig2, e1, min_distance, max_length,
-                                                     step_size, n_tensorlines, hyperbolicity, n_iterations,
-                                                     verbose=False)  # list containing stretchlines
-            # lcs_lines = None
+                # Compute attracting LCS as tensorlines tangent to eigenvectors of CG tensor.
+                lcs_lines = utils.tensorlines_incompressible(self.x, self.y, eig2, e1, min_distance, max_length,
+                                                         step_size, n_tensorlines, hyperbolicity, n_iterations,
+                                                         verbose=False)  # list containing stretchlines
+            else:
+                lcs_lines = None
 
             # Store FTLE field at each timestep
             ftle_dict[str(time)] = ftle
@@ -262,7 +264,7 @@ class FlowField:
             # Get desired FTLE snapshot data
             ftle = self.ftle[str(time)]
             plt.contourf(self.x, self.y, ftle, 100, cmap=plt.cm.Greys, vmin=0, vmax=8)
-            plt.title('FTLE')
+            plt.title('Odor (red) overlaying FTLE (gray lines)')
             plt.colorbar()
         if type == 'FSLE':
             fsle = self.fsle[time]
@@ -280,15 +282,17 @@ class FlowField:
             # create masked arrays of odor data to allow transparency where there is very low odor
             odor_a = np.squeeze(odor[0][:, :, frame])
             # odor_a = np.ma.masked_array(odor_a, odor_a < 0.0001)
-            odor_b = np.squeeze(odor[1][:, :, frame])
+            # odor_b = np.squeeze(odor[1][:, :, frame])
             # odor_b = np.ma.masked_array(odor_b, odor_b < 0.0001)
 
             # plt.contourf(self.xmesh_uv, self.ymesh_uv, np.squeeze(odor[0][:, :, frame]),
             #              100, cmap=plt.cm.Reds, alpha=0.4)
             # plt.contourf(self.xmesh_uv, self.ymesh_uv, np.squeeze(odor[1][:, :, frame]),
             #              100, cmap=plt.cm.Blues, alpha=0.4)
-            plt.pcolormesh(self.xmesh_uv, self.ymesh_uv, odor_a, cmap=plt.cm.Reds, alpha=0.5)
-            plt.pcolormesh(self.xmesh_uv, self.ymesh_uv, odor_b, cmap=plt.cm.Blues, alpha=0.5)
+            plt.pcolormesh(self.xmesh_uv, self.ymesh_uv, odor_a, cmap=plt.cm.Reds, alpha=0.5, vmax=0.5)
+            plt.colorbar()
+            # plt.pcolormesh(self.xmesh_uv, self.ymesh_uv, odor_b, cmap=plt.cm.Blues, alpha=0.5)
+            ax.set_aspect('equal', adjustable='box')
 
         if lcs:
             for i in range(len(self.lcs_lines[str(time)][0])):
@@ -296,7 +300,7 @@ class FlowField:
                         linewidth=0.5, linestyle="dashed")
 
         # Save figure
-        plt.savefig('plots/{type}_snap_{name}.png'.format(type=type, name=name))
+        plt.savefig('plots/{type}_snap_{name}.png'.format(type=type, name=name), dpi=300)
 
     def plot_lyptime(self, time, name='1'):
         # Plot contour map of separation time used in FSLE computations

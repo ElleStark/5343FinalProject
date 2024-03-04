@@ -39,6 +39,7 @@ all_times = np.array(list(lcs_dict.keys()))
 # idxs = slice(min_time_idx, max_time_idx)
 
 idxs = list(np.linspace(50, 200, 7).astype(int))
+idxs = [30]
 select_times = all_times[idxs]
 select_odor = odor_a[:, :, idxs]
 
