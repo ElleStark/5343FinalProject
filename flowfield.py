@@ -124,7 +124,6 @@ class FlowField:
         self.fsle = fsle_dict
         self.lyptime = lyptime_dict
 
-
     def compute_ftle(self, lcs=False):
         """
         modified from https://github.com/jollybao/LCS/blob/master/src/FTLE.py
