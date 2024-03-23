@@ -16,8 +16,8 @@ import math
 # SUBSET: specify desired time and space limits for reading in only a subset of the data
 
 # Subset in time: SET TO None IF ALL TIMES DESIRED!
-min_frame = 420
-max_frame = 501  # 250 frames is 5 seconds of data for 50Hz resolution
+min_frame = 2750
+max_frame = 3001  # 200 frames is 4 seconds of data for 50Hz resolution
 # Subset in Space: SET TO None if ENTIRE DOMAIN DESIRED!
 min_x_index = None
 max_x_index = None  # 201 steps is 0.1 m for dx=0.005
@@ -168,22 +168,27 @@ print('time to compute FTLE is: ' + str(time.time()-start_timer))
 # Create movie of FTLE field, passing in xlim and ylim for plotting. Saves ftle.mp4 in \plots\ folder.
 # turb_lcs.ftle_movie((min(xvec_ftle), max(xvec_ftle)), (min(yvec_ftle), max(yvec_ftle)))
 
-# Save LCS & FTLE dictionaries using pickle
-start_timer = time.time()
+# Save LCS & FTLE dictionaries using pickle if desired
+# start_timer = time.time()
 # fname_lcs = (f'data/LCS_data/alcs_backwardT{integration_time}_spacing{particle_spacing}_0.6to10s_'
 #          f'x{min_x_index}to{max_x_index}_y{min_y_index}to{max_y_index}.pickle')
 # with open(fname_lcs, 'wb') as handle:
 #     pickle.dump(turb_lcs.lcs_lines, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-fname_ftle = f'data/LCS_data/ftle_backwardT{integration_time}_spacing{particle_spacing}_9to10s.pickle'
-with open(fname_ftle, 'wb') as handle:
-    pickle.dump(turb_lcs.ftle, handle, protocol=pickle.HIGHEST_PROTOCOL)
-print(f'time to save dictionaries: {time.time() - start_timer}')
+# fname_ftle = f'data/LCS_data/ftle_backwardT{integration_time}_spacing{particle_spacing}_10to14s.pickle'
+# with open(fname_ftle, 'wb') as handle:
+#     pickle.dump(turb_lcs.ftle, handle, protocol=pickle.HIGHEST_PROTOCOL)
+# print(f'time to save dictionaries: {time.time() - start_timer}')
+
+# Or, save as numpy array:
+ftle_array = np.array([*turb_lcs.ftle.values()])
+np.save('data/LCS_data/FTLE_T0_6_fine_55to60s.npy', ftle_array)
+
 
 # For testing, plot snapshot figures:
-turb_lcs.ftle_snapshot(tau_list[0],
-                       name=f'ftle_odor0.5_backwardT{integration_time}_spacing{particle_spacing}_t{tau_list[0]}',
-                       odor=odor_a, lcs=False, type='FTLE')
+# turb_lcs.ftle_snapshot(tau_list[0],
+#                        name=f'ftle_odor0.5_backwardT{integration_time}_spacing{particle_spacing}_t{tau_list[0]}',
+#                        odor=odor_a, lcs=False, type='FTLE')
 #turb_lcs.plot_lyptime(tau_list[0], name='t0_r5')
 #turb_lcs.ftle_snapshot(tau_list[1], name='t2_5', odor=[odor_a, odor_b])
 #turb_lcs.ftle_snapshot(tau_list[2], name='t5', odor=[odor_a, odor_b])
