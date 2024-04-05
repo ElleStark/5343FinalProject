@@ -16,8 +16,8 @@ import math
 # SUBSET: specify desired time and space limits for reading in only a subset of the data
 
 # Subset in time: SET TO None IF ALL TIMES DESIRED!
-min_frame = 2750
-max_frame = 3001  # 200 frames is 4 seconds of data for 50Hz resolution
+min_frame = 2720
+max_frame = 2781  # 200 frames is 4 seconds of data for 50Hz resolution
 # Subset in Space: SET TO None if ENTIRE DOMAIN DESIRED!
 min_x_index = None
 max_x_index = None  # 201 steps is 0.1 m for dx=0.005
@@ -182,7 +182,7 @@ print('time to compute FTLE is: ' + str(time.time()-start_timer))
 
 # Or, save as numpy array:
 ftle_array = np.array([*turb_lcs.ftle.values()])
-np.save('data/LCS_data/FTLE_T0_6_fine_55to60s.npy', ftle_array)
+np.save('data/LCS_data/FTLE_T0_6_fine_55to55_6s.npy', ftle_array)
 
 
 # For testing, plot snapshot figures:

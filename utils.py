@@ -2,7 +2,6 @@ import numpy as np
 # Import Rectangular bivariate spline from scipy
 from scipy.interpolate import RectBivariateSpline as RBS
 
-
 def eigen(A):
     """The function computes the eigenvalues and eigenvectors of a two-dimensional symmetric matrix.
     from TBarrier repository by Encinas Bartos, Kaszas, Haller 2023: https://github.com/EncinasBartos/TBarrier
