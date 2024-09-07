@@ -16,8 +16,8 @@ import math
 # SUBSET: specify desired time and space limits for reading in only a subset of the data
 
 # Subset in time: SET TO None IF ALL TIMES DESIRED!
-min_frame = 2720
-max_frame = 2781  # 200 frames is 4 seconds of data for 50Hz resolution
+min_frame = 0
+max_frame = 31  # 200 frames is 4 seconds of data for 50Hz resolution
 # Subset in Space: SET TO None if ENTIRE DOMAIN DESIRED!
 min_x_index = None
 max_x_index = None  # 201 steps is 0.1 m for dx=0.005
@@ -29,7 +29,7 @@ max_y_index = None
 # Use [] to store data in memory, and use .item() method to convert single values from array to float.
 
 start = time.time()  # track amount of time to read in the data
-with h5py.File('D:/Re100_0_5mm_50Hz_16source_FTLE_manuscript.h5', 'r') as f:
+with h5py.File('D:/singlesource_2d_extended/Re100_0_5mm_50Hz_singlesource_2d.h5', 'r') as f:
 
     # Metadata: spatiotemporal resolution and domain size
     dt_freq = f.get('Model Metadata/timeResolution')[0].item()
@@ -52,8 +52,8 @@ with h5py.File('D:/Re100_0_5mm_50Hz_16source_FTLE_manuscript.h5', 'r') as f:
     # Odor data - select from odor pairs (cxa, cxb), where x is integers [1,...,8]
     # higher numbers indicate increasing distance from each other. Source locations are symmetric about y=0.
     # location of c1a = [0,0.00375], location of c1b = [0, -0.00375]
-    odor_a = f.get('Odor Data/c1a')[min_frame:max_frame, min_x_index:max_x_index, min_y_index:max_y_index].T
-    odor_b = f.get('Odor Data/c1b')[min_frame:max_frame, min_x_index:max_x_index, min_y_index:max_y_index].T
+    odor1 = f.get('Odor Data/c')[min_frame:max_frame, min_x_index:max_x_index, min_y_index:max_y_index].T
+    # odor_b = f.get('Odor Data/c1b')[min_frame:max_frame, min_x_index:max_x_index, min_y_index:max_y_index].T
 
 # Track and display how long it took to read in the data
 total_time = time.time()-start
@@ -78,9 +78,9 @@ print('time to read in data: ' + str(total_time))
 # plt.close()
 
 # Create grid of particles with desired spacing
-particle_spacing = spatial_res / 2  # can determine visually if dx is appropriate based on smooth contours for FTLE
-# Test with very coarse grid
-# particle_spacing = 0.002
+# particle_spacing = spatial_res / 2  # can determine visually if dx is appropriate based on smooth contours for FTLE
+# Test with coarse grid
+particle_spacing = 0.004
 
 # x and y vectors based on velocity mesh limits and particle spacing
 xvec_ftle = np.linspace(xmesh_uv[0][0], xmesh_uv[0][-1], int(np.shape(u_data)[1] * spatial_res/particle_spacing))
@@ -119,7 +119,7 @@ turb_lcs = flowfield.DiscreteFlow(xmesh_ftle, ymesh_ftle, u_data, v_data, xmesh_
 
 # FTLE integration parameters
 ftle_dt = -dt_data  # negative for backward-time FTLE
-integration_time = 0.6  # integration time in seconds
+integration_time = 0.5  # integration time in seconds
 
 # Calculate start and end times for calculating FTLE so that enough data is available to integrate
 # if min_frame is None:
@@ -143,11 +143,11 @@ if ftle_dt > 0:
     end_time = end_frame * dt_data
 
 # Evolution time - can manually input different start/end frames here instead of calculating based on data
-tau_list = np.linspace(start_time, end_time, int(abs(((end_time - start_time)/ftle_dt)))+1)
+# tau_list = np.linspace(start_time, end_time, int(abs(((end_time - start_time)/ftle_dt)))+1)
 
 # For testing, just use a snapshot:
 #tau_list = [(end_time-start_time/2)]
-# tau_list = [start_time]
+tau_list = [start_time]
 # tau_list = [3.78]
 # tau_list = np.linspace(start_time, 4, int((4-start_time)/0.02)+1)
 
@@ -157,6 +157,14 @@ start_timer = time.time()
 turb_lcs.compute_flow_map(integration_time, tau_list, dt=ftle_dt, method='IE')
 end_timer = time.time() - start_timer
 print('time to compute flow map is: ' + str(end_timer))
+
+# QC plot: final positions of Lagrangian tracers
+fig, ax = plt.subplots()
+positions = turb_lcs.flow_map[start_time]
+plt.scatter(positions[0, :], positions[1, :])
+ax.set_aspect('equal', adjustable='box')
+plt.show()
+
 
 # Compute FTLE using central differencing for strain tensor
 start_timer = time.time()
@@ -182,13 +190,12 @@ print('time to compute FTLE is: ' + str(time.time()-start_timer))
 
 # Or, save as numpy array:
 ftle_array = np.array([*turb_lcs.ftle.values()])
-np.save('data/LCS_data/FTLE_T0_6_fine_55to55_6s.npy', ftle_array)
-
+np.save('data/LCS_data/FTLE_T0_6_fine_0s_vel_extend_test_0.004Spacing_Delta20.npy', ftle_array)
 
 # For testing, plot snapshot figures:
-# turb_lcs.ftle_snapshot(tau_list[0],
-#                        name=f'ftle_odor0.5_backwardT{integration_time}_spacing{particle_spacing}_t{tau_list[0]}',
-#                        odor=odor_a, lcs=False, type='FTLE')
+turb_lcs.ftle_snapshot(tau_list[0],
+                       name=f'expandedSim_ftle_odor_backwardT{integration_time}_spacing{particle_spacing}_t{tau_list[0]}_v_extend_test_0.004Spacing_Delta20',
+                       odor=odor1, lcs=False, type='FTLE')
 #turb_lcs.plot_lyptime(tau_list[0], name='t0_r5')
 #turb_lcs.ftle_snapshot(tau_list[1], name='t2_5', odor=[odor_a, odor_b])
 #turb_lcs.ftle_snapshot(tau_list[2], name='t5', odor=[odor_a, odor_b])
