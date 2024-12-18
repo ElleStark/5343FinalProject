@@ -16,6 +16,7 @@ import time
 import utils
 import scipy.io
 
+starttime = time.time()
 
 # Constants for double gyre:
 a = 0.1  # velocity magnitude A aka U in Pratt et al., 2015
@@ -43,22 +44,28 @@ T = -2*T_0  # integration time - Pratt et al. used 2-2.5 turnover times
 tau_list = np.linspace(0, 4*T_0, 1000)  # evolution times
 #tau_list = [3.5*T_0]
 dt = T/500
-start_time = time.time()
-DoubleGyre.compute_flow_map(T, tau_list, dt=T/50, method='IE')
-print('time to compute trajectories is: ' + str(time.time()-start_time))
+# start_time = time.time()
+# DoubleGyre.compute_flow_map(T, tau_list, dt=T/50, method='IE')
+# print('time to compute trajectories is: ' + str(time.time()-start_time))
 
-# If only interested in one or a few points in time, can use method 'compute_flow_map_w_trajs' and plot trajectories
-# tau_list = [0]
-# DoubleGyre.compute_flow_map_w_trajs(T, tau_list, dt=dt, method='RK4')
-# DoubleGyre.plot_trajectories([0, 2], [0, 1])
+# # If only interested in one or a few points in time, can use method 'compute_flow_map_w_trajs' and plot trajectories
+# # tau_list = [0]
+# # DoubleGyre.compute_flow_map_w_trajs(T, tau_list, dt=dt, method='RK4')
+# # DoubleGyre.plot_trajectories([0, 2], [0, 1])
 
-# Compute FTLE using central differencing for strain tensor
-start_time = time.time()
-DoubleGyre.compute_ftle()
-print('time to compute FTLE is: ' + str(time.time()-start_time))
+# # Compute FTLE using central differencing for strain tensor
+# start_time = time.time()
+# DoubleGyre.compute_ftle()
+# print('time to compute FTLE is: ' + str(time.time()-start_time))
 
-# Save FTLE field for all times
-np.save('data/dg_ftle_4T0_n1000_1000step', DoubleGyre.ftle)
+# # Save FTLE field for all times
+# np.save('data/dg_ftle_4T0_n1000_1000step_D0', DoubleGyre.ftle)
+startT = time.time()
+DoubleGyre.ftle = np.load('D:/5343TransportDispersionData/dg_ftle_4T0_n1000_1000step.npy', allow_pickle=True)
+DoubleGyre.ftle = DoubleGyre.ftle[()]
+ftle_keys = list(DoubleGyre.ftle.keys())
+
+print('time to load FTLE data is: ' + str(time.time()-startT))
 
 # Create movie of FTLE field, passing in xlim and ylim for plotting. Saves ftle.mp4 in \plots\ folder.
 #DoubleGyre.ftle_movie((0, 2), (0, 1))
@@ -71,20 +78,22 @@ np.save('data/dg_ftle_4T0_n1000_1000step', DoubleGyre.ftle)
 
 
 # PARTICLE TRACKING MODEL & MOVIE
-num_particles = 3000000  # number of particles initialized in each location
+num_particles = 3000  # number of particles initialized in each location
+# num_particles = 1000
 M = 1 / num_particles  # total mass = 1, so tag each particle with a mass of 1/#particles
 dt = abs(dt)
-D = 10 ** (-6)
+# D = 10 ** (-6)
+D = 5*10**(-5)
 batchelor_length = 0.1  # for setting up size of square for initial conditions
-blob1_ctr = [1.6, 0.5]  # red dye
-blob2_ctr = [0.5, 0.5]  # blue dye
+blob1_ctr = [1.5, 0.7]  # red dye
+blob2_ctr = [0.5, 0.7]  # blue dye
 
 # Function call to create and save particle tracking model
 starttime = time.time()
 blob1_pos, blob2_pos = DoubleGyre.track_particles_rw(num_particles, blob1_ctr, blob2_ctr, dt,
                                                     4 * T_0, D, batchelor_length)
-np.save('data/blob1_pos_3m_dt500', blob1_pos)
-np.save('data/blob2_pos_3m_dt500', blob2_pos)
+# np.save('data/blob1_pos_3m_dt500_D0', blob1_pos)
+# np.save('data/blob2_pos_3m_dt500_D0', blob2_pos)
 print('time to compute particle tracking is: ' + str(time.time()-starttime))
 
 # # QC: scatterplot first snapshot
@@ -94,8 +103,8 @@ print('time to compute particle tracking is: ' + str(time.time()-starttime))
 # plt.show()
 
 # Load particle tracking data if already computed and saved
-blob1_pos = np.load('data/blob1_pos_3m_dt500.npy')
-blob2_pos = np.load('data/blob2_pos_3m_dt500.npy')
+# blob1_pos = np.load('data/blob1_pos_3m_dt500.npy')
+# blob2_pos = np.load('data/blob2_pos_3m_dt500.npy')
 
 # First 2D histogram
 blob1_ic, xbins1, ybins1 = np.histogram2d(blob1_pos[0, 0, :], blob1_pos[1, 0, :],
@@ -124,7 +133,7 @@ if np.max(rxn_data) > 0:
     rxn_data = rxn_data ** (1 / 4)  # scale data for better plotting
 
 # Define reaction colormap
-rxn_colors = scipy.io.loadmat('data/rxn_cmap.mat')
+rxn_colors = scipy.io.loadmat('D:/5343TransportDispersionData/rxn_cmap.mat')
 rxn_colors = rxn_colors['rxn_cmap']
 rxn_cmap = colors.ListedColormap(rxn_colors)
 
@@ -146,12 +155,12 @@ blobs_plot = ax1.imshow(np.zeros((len(xbins1), len(ybins1), 3)), extent=[0, 2, 0
 blobs_plot.set_data(combined_data.transpose(1, 0, 2))
 
 # First snapshot - FTLE with reaction
-rxn_plot = ax2.imshow(rxn_data.T, extent=[0, 2, 0, 1], alpha=0.55, origin='lower', cmap=rxn_cmap, zorder=1)
-ftle_plot = ax2.contourf(DoubleGyre.x, DoubleGyre.y, DoubleGyre.ftle[tau_list[0]], 100, extent=[0, 2, 0, 1],
-                         cmap=plt.cm.Greys, zorder=-1)
+# rxn_plot = ax2.imshow(rxn_data.T, extent=[0, 2, 0, 1], alpha=0.55, origin='lower', cmap=rxn_cmap, zorder=1)
+# ftle_plot = ax2.contourf(DoubleGyre.x, DoubleGyre.y, DoubleGyre.ftle[ftle_keys[0]], 100, extent=[0, 2, 0, 1],
+#                          cmap=plt.cm.Greys, zorder=-1)
 
 # # QC: Plot and save snapshot
-plt.savefig('plots/plot750.png', dpi=200)
+plt.savefig('plots/5x10-5D_plot750_n3m_ic0.50.7.png', dpi=200)
 plt.show()
 
 
@@ -172,28 +181,29 @@ def update(frame):
     # FTLE PLOT (BOTTOM POSITION)
 
     # Remove previous FTLE contours to update contourf correctly
-    for c in ax2.collections:
-        c.remove()
-    ftle_plot = ax2.contourf(DoubleGyre.x, DoubleGyre.y, DoubleGyre.ftle[tau_list[frame]], 100, extent=[0, 2, 0, 1],
-                         cmap=plt.cm.Greys, zorder=-1)
+    # for c in ax2.collections:
+    #     c.remove()
+    # ftle_plot = ax2.contourf(DoubleGyre.x, DoubleGyre.y, DoubleGyre.ftle[ftle_keys[frame]], 100, extent=[0, 2, 0, 1],
+    #                      cmap=plt.cm.Greys, zorder=-1)
 
-    # Had to also remove previous images to avoid overlay issues with imshow
-    for img in ax2.images:
-        img.remove()
-    rxn_data = np.multiply(blob2_data, blob1_data)
-    if np.max(rxn_data) > 0:
-        rxn_data = (rxn_data - np.min(rxn_data)) / (np.max(rxn_data) - np.min(rxn_data))
-        rxn_data = rxn_data ** (1 / 4)  # scale data for better plotting
+    # # Had to also remove previous images to avoid overlay issues with imshow
+    # for img in ax2.images:
+    #     img.remove()
+    # rxn_data = np.multiply(blob2_data, blob1_data)
+    # if np.max(rxn_data) > 0:
+    #     rxn_data = (rxn_data - np.min(rxn_data)) / (np.max(rxn_data) - np.min(rxn_data))
+    #     rxn_data = rxn_data ** (1 / 4)  # scale data for better plotting
 
-    rxn_plot = ax2.imshow(rxn_data.T, extent=[0, 2, 0, 1], alpha=0.55, origin='lower', cmap=rxn_cmap, zorder=1)
+    # rxn_plot = ax2.imshow(rxn_data.T, extent=[0, 2, 0, 1], alpha=0.55, origin='lower', cmap=rxn_cmap, zorder=1)
 
-    return blobs_plot, *ftle_plot.collections, rxn_plot
+    # return blobs_plot, *ftle_plot.collections, rxn_plot
+    return blobs_plot
 
 
 doublegyre_movie = animation.FuncAnimation(fig=fig, func=update, frames=len(blob1_pos[0, :, 0]), interval=200)
 
 # save video
-f = r"plots/doublegyre_final.mp4"
+f = r"plots/doublegyre_D5x10-5_3m_ic0.50.7.mp4"
 writervideo = animation.FFMpegWriter(fps=60)
 doublegyre_movie.save(f, writer=writervideo, dpi=200)
 

@@ -496,6 +496,35 @@ class FlowField:
         self.flow_map = fmap_dict
         self.trajectories = traj_dict
 
+
+    # Reflective boundary function
+    def apply_reflective_boundaries(self, positions, velocities, bounds):
+        """
+        Applies reflective boundary conditions to particle positions and velocities.
+
+        Parameters:
+            positions (ndarray): Particle positions, shape (n, 2).
+            velocities (ndarray): Particle velocities, shape (n, 2).
+            bounds (tuple): Domain bounds (x_min, x_max, y_min, y_max).
+        """
+        x_min, x_max, y_min, y_max = bounds
+        
+        # Reflective logic for x boundaries
+        mask_x_min = positions[:, 0] < x_min
+        mask_x_max = positions[:, 0] > x_max
+        velocities[mask_x_min | mask_x_max, 0] *= -1  # Reverse x velocity
+        positions[mask_x_min, 0] = 2 * x_min - positions[mask_x_min, 0]  # Reflect back into domain
+        positions[mask_x_max, 0] = 2 * x_max - positions[mask_x_max, 0]  # Reflect back into domain
+        
+        # Reflective logic for y boundaries
+        mask_y_min = positions[:, 1] < y_min
+        mask_y_max = positions[:, 1] > y_max
+        velocities[mask_y_min | mask_y_max, 1] *= -1  # Reverse y velocity
+        positions[mask_y_min, 1] = 2 * y_min - positions[mask_y_min, 1]  # Reflect back into domain
+        positions[mask_y_max, 1] = 2 * y_max - positions[mask_y_max, 1]  # Reflect back into domain
+
+
+
     def track_particles_rw(self, n_particles, ic_idx_1, ic_idx_2, dt, duration, D, Lb):
         """
         Uses Lagrangian particle tracking model with random walk diffusion to calculate particle positions over time
@@ -541,6 +570,8 @@ class FlowField:
         blob1_single_steps = np.zeros((2, L, n_particles))
         blob2_single_steps = np.zeros((2, L, n_particles))
 
+        bounds = ()
+
         for step in range(L):
             tstep = step * dt
 
@@ -550,6 +581,11 @@ class FlowField:
             #blob1_out = blob1 + self.vfield(tstep, blob1) * dt
             blob1 = blob1_out
             blob1_single_steps[:, step, :] = blob1_out
+
+            # Apply reflective boundaries
+
+
+
             # Blob 1 concentrations - use numpy's built-in histogram function
             # conc1, xbins1, ybins1 = np.histogram2d(blob1_out[1, :], blob1_out[0, :], bins=(50, 100))
                                                    #bins=(np.linspace(0, 1, ny+1), np.linspace(0, 2, nx+1)))
@@ -559,7 +595,7 @@ class FlowField:
             blob2_out = self.improvedEuler_singlestep(dt, tstep, blob2) + sqrt(2 * D * dt) * np.random.randn(*blob2.shape)
             #blob2_out = self.improvedEuler_singlestep(dt, tstep, blob2)
             blob2 = blob2_out
-            blob2_single_steps[:, step, :] = blob2_out
+            blob2_single_steps[:, step, :] = blob2_out          
 
         self.trajs_w_diff = [blob1_single_steps, blob2_single_steps]
 
@@ -610,13 +646,11 @@ class DiscreteFlow(FlowField):
         self.ymesh_uv = ymesh_uv
         self.dt_uv = dt_uv
 
+    # vectorized version:
     def vfield(self, time, y):
         """
-        Calculates velocity field based on interpolation from existing data.
-        :param y: array of particle locations where y[0] is array of x locations and y[1] is array of y locations
-        :param time: scalar value for time
-        :return: array of u and v, where u is size x by y ndarray of horizontal velocity magnitudes,
-        and v is size x by y ndarray of vertical velocity magnitudes.
+        Vectorized version of the vfield function to calculate the velocity field 
+        based on interpolation from existing data.
         """
         # Convert from time to frame
         frame = int(time / self.dt_uv)
@@ -626,108 +660,206 @@ class DiscreteFlow(FlowField):
         xmesh_vec = self.xmesh_uv[0, :]
 
         x_grid = self.xmesh_uv
-        x_offset = xmesh_vec[-1]/2
-        x_grid = x_grid - x_offset  # CENTER x COORDINATES ON ZERO FOR VELOCITY FIELD EXTENSION
+        x_offset = xmesh_vec[-1] / 2
+        x_grid = x_grid - x_offset  # Center x coordinates on zero for velocity field extension
         y_grid = self.ymesh_uv
 
         # Set up interpolation functions
-        # can use cubic interpolation for continuity of the between the segments (improve smoothness)
-        # set bounds_error=False to allow particles to go outside the domain by extrapolation
         u_grid = self.u_data[:, :, frame]
         v_grid = self.v_data[:, :, frame]
-        u_interp = RegularGridInterpolator((ymesh_vec, xmesh_vec), np.squeeze(np.flipud(u_grid)),
-                                           method='linear', bounds_error=False, fill_value=None)
-        v_interp = RegularGridInterpolator((ymesh_vec, xmesh_vec), np.squeeze(np.flipud(v_grid)),
-                                           method='linear', bounds_error=False, fill_value=None)
-
-        # Interpolate u and v values at desired x (y[0]) and y (y[1]) points
-        # u = u_interp((y[1], y[0]))
-        # v = v_interp((y[1], y[0]))
-
-        # vfield = np.array([u, v])
-
-
-        # TRY LINEAR EXTENSION OF VELOCITY FIELD PER TANG ET AL 2010 (https://doi.org/10.1063/1.3276061)
-        # Aim is to prevent boundary effects and errors in particle advection due to finite velocity field data
+        u_interp = RegularGridInterpolator((ymesh_vec, xmesh_vec), np.flipud(u_grid),
+                                        method='linear', bounds_error=False, fill_value=None)
+        v_interp = RegularGridInterpolator((ymesh_vec, xmesh_vec), np.flipud(v_grid),
+                                        method='linear', bounds_error=False, fill_value=None)
 
         # Shift grid such that x is centered on 0 as well as y
-        xmesh_vec = xmesh_vec - (xmesh_vec[-1]/2)
+        xmesh_vec = xmesh_vec - x_offset
 
-        # define length of transition zone (in meters) and x, y boundaries
-        Delta = 0.0005 * 20  # could iterate to find optimal Delta value
+        # Define length of transition zone and boundaries
+        Delta = 0.0005 * 4
         x_max = np.max(x_grid)
         y_max = np.max(y_grid)
-
 
         # Spatial average of velocity field over grid for this time
         avg_u = np.mean(u_grid)
         avg_v = np.mean(v_grid)
 
-        # components of tensor for computing linear velocity field
-        v_l_tensor = np.empty((2,2), dtype=np.float32)
+        # Tensor for linear velocity field computation
+        v_l_tensor = np.empty((2, 2), dtype=np.float32)
+        v_l_tensor[0, 0] = np.mean(x_grid * u_grid - y_grid * v_grid) / np.mean(x_grid ** 2 + y_grid ** 2)
+        v_l_tensor[0, 1] = np.mean(y_grid * u_grid) / np.mean(y_grid ** 2)
+        v_l_tensor[1, 0] = np.mean(x_grid * v_grid) / np.mean(x_grid ** 2)
+        v_l_tensor[1, 1] = np.mean(y_grid * v_grid - x_grid * u_grid) / np.mean(x_grid ** 2 + y_grid ** 2)
 
-        v_l_tensor[0, 0] = np.mean(x_grid * u_grid - y_grid * v_grid) / np.mean(x_grid**2 + y_grid**2)
-        v_l_tensor[0, 1] = np.mean(y_grid * u_grid) / np.mean(y_grid**2)
-        v_l_tensor[1, 0] = np.mean(x_grid * v_grid) / np.mean(x_grid**2)
-        v_l_tensor[1, 1] = np.mean(y_grid * v_grid - x_grid * u_grid) / np.mean(x_grid**2 + y_grid**2)
+        # Get x and y points
+        x_pts = y[0, :] - x_offset
+        y_pts = y[1, :]
 
-        u_list = []
-        v_list = []
-        
-        # Loop through each location
-        for point in range(len(y[0])): 
-            # get x_pt, y_pt on centered coordinate grid
-            x_pt = y[0, point] - x_offset
-            y_pt = y[1, point]
-            # FIND DELTA X and DELTA Y values based on particle positions
-            # if x OR y is outside entire grid, set delta functions to 0
-            if ((abs(x_pt)>=x_max) | (abs(y_pt)>=y_max)):
-                delta_x = 0
-                delta_y = 0
-                # Use closest linear velocity field
-                u = v_l_tensor[0, 0] * x_pt + v_l_tensor[0, 1] * y_pt + avg_u
-                v = v_l_tensor[1, 0] * x_pt + v_l_tensor[1, 1] * y_pt + avg_v
+        # Calculate distance from center for x and y
+        x_abs = np.abs(x_pts)
+        y_abs = np.abs(y_pts)
 
-            # if x AND y are within central grid, use interpolated u values from data
-            elif ((0<=abs(x_pt)<=(x_max-Delta)) & (0<=abs(y_pt)<=(y_max-Delta))):
-                u = u_interp((y_pt, x_pt+x_offset))
-                v = v_interp((y_pt, x_pt+x_offset))
-            # if x OR y is in transition zone, use equation for delta x and delta y functions
-            elif (((x_max)>abs(x_pt)>(x_max-Delta)) | ((y_max)>abs(y_pt)>(y_max-Delta))):
-                # if x within central grid, use delta_x = Delta cubed
-                if (0<=abs(x_pt)<=(x_max-Delta)):
-                    delta_x = Delta**3
-                # if x in transition zone, use equation for delta_x
-                if ((x_max)>abs(x_pt)>(x_max-Delta)):
-                    delta_x = 2*abs(x_pt)**3 + 3*(Delta-2*x_max)*abs(x_pt)**2 + 6*x_max*(x_max-Delta)*abs(x_pt) + x_max**2*(3*Delta-2*x_max)
-                # Repeat with y location
-                if (0<=abs(y_pt)<=(y_max-Delta)):
-                    delta_y = Delta**3
-                if ((y_max)>abs(y_pt)>(y_max-Delta)):
-                    delta_y = 2*abs(y_pt)**3 + 3*(Delta-2*y_max)*abs(y_pt)**2 + 6*y_max*(y_max-Delta)*abs(y_pt) + y_max**2*(3*Delta-2*y_max)
+        # Outside the grid condition
+        outside_cond = (x_abs >= x_max) | (y_abs >= y_max)
 
-                # Find closest linear velocity field 
-                v_l_u = v_l_tensor[0, 0] * x_pt + v_l_tensor[0, 1] * y_pt + avg_u
-                v_l_v = v_l_tensor[1, 0] * x_pt + v_l_tensor[1, 1] * y_pt + avg_v
+        # Inside grid condition
+        inside_cond = (x_abs <= (x_max - Delta)) & (y_abs <= (y_max - Delta))
 
-                # Find original, interpolated velocity values
-                u_orig = u_interp((y_pt, x_pt+x_offset))
-                v_orig = v_interp((y_pt, x_pt+x_offset))
+        # Transition zone condition
+        transition_cond = ~outside_cond & ~inside_cond
 
-                # plug into transition zone equation
-                u = v_l_u + (u_orig - v_l_u) * delta_x * delta_y / Delta**6
-                v = v_l_v + (v_orig - v_l_v) * delta_x * delta_y / Delta**6
+        # Interpolate u and v for points inside the grid
+        u_inside = u_interp((y_pts, x_pts + x_offset))
+        v_inside = v_interp((y_pts, x_pts + x_offset))
 
-            # Output error if coordinates don't make sense
-            else:
-                print('error in determining location of x, y coordinates on centered grid')
+        # For points outside, use linear extension of velocity field
+        u_outside = v_l_tensor[0, 0] * x_pts + v_l_tensor[0, 1] * y_pts + avg_u
+        v_outside = v_l_tensor[1, 0] * x_pts + v_l_tensor[1, 1] * y_pts + avg_v
 
-            u_list.append(u)
-            v_list.append(v)
-            if (point % 100000) == 0:
-                print(f'Point {point/100000}x10^5 out of {round(len(y[0])/100000, 2)}x10^5 computed. u={u}; v={v}. x_pt={x_pt}; y_pt={y_pt}')
+        # Delta functions for transition zone
+        delta_x = np.where(x_abs <= (x_max - Delta), Delta ** 3,
+                        2 * x_abs ** 3 + 3 * (Delta - 2 * x_max) * x_abs ** 2 + 6 * x_max * (x_max - Delta) * x_abs + x_max ** 2 * (3 * Delta - 2 * x_max))
+        delta_y = np.where(y_abs <= (y_max - Delta), Delta ** 3,
+                        2 * y_abs ** 3 + 3 * (Delta - 2 * y_max) * y_abs ** 2 + 6 * y_max * (y_max - Delta) * y_abs + y_max ** 2 * (3 * Delta - 2 * y_max))
 
-        vfield = np.array([u_list, v_list])
+        # Compute velocity for transition zone
+        v_l_u = v_l_tensor[0, 0] * x_pts + v_l_tensor[0, 1] * y_pts + avg_u
+        v_l_v = v_l_tensor[1, 0] * x_pts + v_l_tensor[1, 1] * y_pts + avg_v
+
+        u_orig = u_interp((y_pts, x_pts + x_offset))
+        v_orig = v_interp((y_pts, x_pts + x_offset))
+
+        u_transition = v_l_u + (u_orig - v_l_u) * delta_x * delta_y / Delta ** 6
+        v_transition = v_l_v + (v_orig - v_l_v) * delta_x * delta_y / Delta ** 6
+
+        # Combine results using np.where
+        u = np.where(outside_cond, u_outside, np.where(inside_cond, u_inside, u_transition))
+        v = np.where(outside_cond, v_outside, np.where(inside_cond, v_inside, v_transition))
+
+        vfield = np.array([u, v])
 
         return vfield
+
+
+
+    # def vfield(self, time, y):
+    #     """
+    #     Calculates velocity field based on interpolation from existing data.
+    #     :param y: array of particle locations where y[0] is array of x locations and y[1] is array of y locations
+    #     :param time: scalar value for time
+    #     :return: array of u and v, where u is size x by y ndarray of horizontal velocity magnitudes,
+    #     and v is size x by y ndarray of vertical velocity magnitudes.
+    #     """
+    #     # Convert from time to frame
+    #     frame = int(time / self.dt_uv)
+
+    #     # axes must be in ascending order, so need to flip y-axis, which also means flipping u and v upside-down
+    #     ymesh_vec = np.flipud(self.ymesh_uv)[:, 0]
+    #     xmesh_vec = self.xmesh_uv[0, :]
+
+    #     x_grid = self.xmesh_uv
+    #     x_offset = xmesh_vec[-1]/2
+    #     x_grid = x_grid - x_offset  # CENTER x COORDINATES ON ZERO FOR VELOCITY FIELD EXTENSION
+    #     y_grid = self.ymesh_uv
+
+    #     # Set up interpolation functions
+    #     # can use cubic interpolation for continuity of the between the segments (improve smoothness)
+    #     # set bounds_error=False to allow particles to go outside the domain by extrapolation
+    #     u_grid = self.u_data[:, :, frame]
+    #     v_grid = self.v_data[:, :, frame]
+    #     u_interp = RegularGridInterpolator((ymesh_vec, xmesh_vec), np.squeeze(np.flipud(u_grid)),
+    #                                        method='linear', bounds_error=False, fill_value=None)
+    #     v_interp = RegularGridInterpolator((ymesh_vec, xmesh_vec), np.squeeze(np.flipud(v_grid)),
+    #                                        method='linear', bounds_error=False, fill_value=None)
+
+    #     # Interpolate u and v values at desired x (y[0]) and y (y[1]) points
+    #     # u = u_interp((y[1], y[0]))
+    #     # v = v_interp((y[1], y[0]))
+
+    #     # vfield = np.array([u, v])
+
+
+    #     # TRY LINEAR EXTENSION OF VELOCITY FIELD PER TANG ET AL 2010 (https://doi.org/10.1063/1.3276061)
+    #     # Aim is to prevent boundary effects and errors in particle advection due to finite velocity field data
+
+    #     # Shift grid such that x is centered on 0 as well as y
+    #     xmesh_vec = xmesh_vec - (xmesh_vec[-1]/2)
+
+    #     # define length of transition zone (in meters) and x, y boundaries
+    #     Delta = 0.0005 * 10  # could iterate to find optimal Delta value
+    #     x_max = np.max(x_grid)
+    #     y_max = np.max(y_grid)
+
+
+    #     # Spatial average of velocity field over grid for this time
+    #     avg_u = np.mean(u_grid)
+    #     avg_v = np.mean(v_grid)
+
+    #     # components of tensor for computing linear velocity field
+    #     v_l_tensor = np.empty((2,2), dtype=np.float32)
+
+    #     v_l_tensor[0, 0] = np.mean(x_grid * u_grid - y_grid * v_grid) / np.mean(x_grid**2 + y_grid**2)
+    #     v_l_tensor[0, 1] = np.mean(y_grid * u_grid) / np.mean(y_grid**2)
+    #     v_l_tensor[1, 0] = np.mean(x_grid * v_grid) / np.mean(x_grid**2)
+    #     v_l_tensor[1, 1] = np.mean(y_grid * v_grid - x_grid * u_grid) / np.mean(x_grid**2 + y_grid**2)
+
+    #     u_list = []
+    #     v_list = []
+        
+    #     # Loop through each location
+    #     for point in range(len(y[0])): 
+    #         # get x_pt, y_pt on centered coordinate grid
+    #         x_pt = y[0, point] - x_offset
+    #         y_pt = y[1, point]
+    #         # FIND DELTA X and DELTA Y values based on particle positions
+    #         # if x OR y is outside entire grid, set delta functions to 0
+    #         if ((abs(x_pt)>=x_max) | (abs(y_pt)>=y_max)):
+    #             delta_x = 0
+    #             delta_y = 0
+    #             # Use closest linear velocity field
+    #             u = v_l_tensor[0, 0] * x_pt + v_l_tensor[0, 1] * y_pt + avg_u
+    #             v = v_l_tensor[1, 0] * x_pt + v_l_tensor[1, 1] * y_pt + avg_v
+
+    #         # if x AND y are within central grid, use interpolated u values from data
+    #         elif ((0<=abs(x_pt)<=(x_max-Delta)) & (0<=abs(y_pt)<=(y_max-Delta))):
+    #             u = u_interp((y_pt, x_pt+x_offset))
+    #             v = v_interp((y_pt, x_pt+x_offset))
+    #         # if x OR y is in transition zone, use equation for delta x and delta y functions
+    #         elif (((x_max)>abs(x_pt)>(x_max-Delta)) | ((y_max)>abs(y_pt)>(y_max-Delta))):
+    #             # if x within central grid, use delta_x = Delta cubed
+    #             if (0<=abs(x_pt)<=(x_max-Delta)):
+    #                 delta_x = Delta**3
+    #             # if x in transition zone, use equation for delta_x
+    #             if ((x_max)>abs(x_pt)>(x_max-Delta)):
+    #                 delta_x = 2*abs(x_pt)**3 + 3*(Delta-2*x_max)*abs(x_pt)**2 + 6*x_max*(x_max-Delta)*abs(x_pt) + x_max**2*(3*Delta-2*x_max)
+    #             # Repeat with y location
+    #             if (0<=abs(y_pt)<=(y_max-Delta)):
+    #                 delta_y = Delta**3
+    #             if ((y_max)>abs(y_pt)>(y_max-Delta)):
+    #                 delta_y = 2*abs(y_pt)**3 + 3*(Delta-2*y_max)*abs(y_pt)**2 + 6*y_max*(y_max-Delta)*abs(y_pt) + y_max**2*(3*Delta-2*y_max)
+
+    #             # Find closest linear velocity field 
+    #             v_l_u = v_l_tensor[0, 0] * x_pt + v_l_tensor[0, 1] * y_pt + avg_u
+    #             v_l_v = v_l_tensor[1, 0] * x_pt + v_l_tensor[1, 1] * y_pt + avg_v
+
+    #             # Find original, interpolated velocity values
+    #             u_orig = u_interp((y_pt, x_pt+x_offset))
+    #             v_orig = v_interp((y_pt, x_pt+x_offset))
+
+    #             # plug into transition zone equation
+    #             u = v_l_u + (u_orig - v_l_u) * delta_x * delta_y / Delta**6
+    #             v = v_l_v + (v_orig - v_l_v) * delta_x * delta_y / Delta**6
+
+    #         # Output error if coordinates don't make sense
+    #         else:
+    #             print('error in determining location of x, y coordinates on centered grid')
+
+    #         u_list.append(u)
+    #         v_list.append(v)
+    #         if (point % 100000) == 0:
+    #             print(f'Point {point/100000}x10^5 out of {round(len(y[0])/100000, 2)}x10^5 computed. u={u}; v={v}. x_pt={x_pt}; y_pt={y_pt}')
+
+    #     vfield = np.array([u_list, v_list])
+
+    #     return vfield
 

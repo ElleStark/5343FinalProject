@@ -16,8 +16,8 @@ import math
 # SUBSET: specify desired time and space limits for reading in only a subset of the data
 
 # Subset in time: SET TO None IF ALL TIMES DESIRED!
-min_frame = 0
-max_frame = 31  # 200 frames is 4 seconds of data for 50Hz resolution
+min_frame = 4550
+max_frame = 4581  # 200 frames is 4 seconds of data for 50Hz resolution
 # Subset in Space: SET TO None if ENTIRE DOMAIN DESIRED!
 min_x_index = None
 max_x_index = None  # 201 steps is 0.1 m for dx=0.005
@@ -78,9 +78,9 @@ print('time to read in data: ' + str(total_time))
 # plt.close()
 
 # Create grid of particles with desired spacing
-# particle_spacing = spatial_res / 2  # can determine visually if dx is appropriate based on smooth contours for FTLE
+particle_spacing = spatial_res / 2  # can determine visually if dx is appropriate based on smooth contours for FTLE
 # Test with coarse grid
-particle_spacing = 0.004
+# particle_spacing = 0.004
 
 # x and y vectors based on velocity mesh limits and particle spacing
 xvec_ftle = np.linspace(xmesh_uv[0][0], xmesh_uv[0][-1], int(np.shape(u_data)[1] * spatial_res/particle_spacing))
@@ -119,7 +119,7 @@ turb_lcs = flowfield.DiscreteFlow(xmesh_ftle, ymesh_ftle, u_data, v_data, xmesh_
 
 # FTLE integration parameters
 ftle_dt = -dt_data  # negative for backward-time FTLE
-integration_time = 0.5  # integration time in seconds
+integration_time = 0.6  # integration time in seconds
 
 # Calculate start and end times for calculating FTLE so that enough data is available to integrate
 # if min_frame is None:
@@ -159,11 +159,11 @@ end_timer = time.time() - start_timer
 print('time to compute flow map is: ' + str(end_timer))
 
 # QC plot: final positions of Lagrangian tracers
-fig, ax = plt.subplots()
-positions = turb_lcs.flow_map[start_time]
-plt.scatter(positions[0, :], positions[1, :])
-ax.set_aspect('equal', adjustable='box')
-plt.show()
+# fig, ax = plt.subplots()
+# positions = turb_lcs.flow_map[start_time]
+# plt.scatter(positions[0, :], positions[1, :])
+# ax.set_aspect('equal', adjustable='box')
+# plt.show()
 
 
 # Compute FTLE using central differencing for strain tensor
@@ -189,12 +189,12 @@ print('time to compute FTLE is: ' + str(time.time()-start_timer))
 # print(f'time to save dictionaries: {time.time() - start_timer}')
 
 # Or, save as numpy array:
-ftle_array = np.array([*turb_lcs.ftle.values()])
-np.save('data/LCS_data/FTLE_T0_6_fine_0s_vel_extend_test_0.004Spacing_Delta20.npy', ftle_array)
+# ftle_array = np.array([*turb_lcs.ftle.values()])
+# np.save('data/LCS_data/FTLE_T0_6_fine_0s_linearvext_t165.6_0.004Spacing_Delta10_vect.npy', ftle_array)
 
 # For testing, plot snapshot figures:
 turb_lcs.ftle_snapshot(tau_list[0],
-                       name=f'expandedSim_ftle_odor_backwardT{integration_time}_spacing{particle_spacing}_t{tau_list[0]}_v_extend_test_0.004Spacing_Delta20',
+                       name=f'expandedSim_ftle_odor_backwardT{integration_time}_spacing{particle_spacing}_t{tau_list[0]}_linearvext_t91.6_0.004Spacing_Delta4',
                        odor=odor1, lcs=False, type='FTLE')
 #turb_lcs.plot_lyptime(tau_list[0], name='t0_r5')
 #turb_lcs.ftle_snapshot(tau_list[1], name='t2_5', odor=[odor_a, odor_b])
